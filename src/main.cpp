@@ -20,7 +20,7 @@
 constexpr int size = 200;
 
 constexpr double imp0 = 377.0;
-constexpr int max_time = 400;
+constexpr int max_time = 300;
 
 namespace {
 void run_3d();
@@ -120,7 +120,7 @@ int main() {
   return 0;
 }
 
-constexpr int size_3d = 50;
+constexpr int size_3d = 40;
 const double courants = 1.0 / sqrt(3.0);
 
 constexpr double f0 = 0.08;
@@ -143,6 +143,18 @@ int idx_ey(int x, int y, int z) {
 int idx_ez(int x, int y, int z) {
   return (x * size_3d + y) * (size_3d - 1) + z;
 }
+
+// abc
+int idx_eyx(int a, int b) { return a * size_3d + b; }
+int idx_ezx(int a, int b) { return a * (size_3d - 1) + b; }
+
+int idx_exy(int a, int b) { return a * size_3d + b; }
+int idx_ezy(int a, int b) { return a * (size_3d - 1) + b; }
+
+int idx_exz(int a, int b) { return a * size_3d + b; }
+int idx_eyz(int a, int b) { return a * (size_3d - 1) + b; }
+
+const double abcco = (courants - 1.0) / (courants + 1.0);
 
 namespace {
 void run_3d() {
@@ -232,6 +244,23 @@ void run_3d() {
         chze[i] = courants / imp0;
       }
 
+  const int size_abc = (size_3d - 1) * size_3d;
+
+  std::vector<double> eyx0(size_abc);
+  std::vector<double> ezx0(size_abc);
+  std::vector<double> eyx1(size_abc);
+  std::vector<double> ezx1(size_abc);
+
+  std::vector<double> exy0(size_abc);
+  std::vector<double> ezy0(size_abc);
+  std::vector<double> exy1(size_abc);
+  std::vector<double> ezy1(size_abc);
+
+  std::vector<double> exz0(size_abc);
+  std::vector<double> eyz0(size_abc);
+  std::vector<double> exz1(size_abc);
+  std::vector<double> eyz1(size_abc);
+
   for (auto time{0}; time < max_time; ++time) {
     const double t = time * courants;
     // update magnetic fields
@@ -290,48 +319,170 @@ void run_3d() {
                              (hx[idx_hx(x, y, z)] - hx[idx_hx(x, y - 1, z)]));
         }
 
-    for (auto y{0}; y < size_3d - 1; ++y)
-      for (auto z{0}; z < size_3d; ++z) {
-        ey[idx_ey(0, y, z)] = 0.0;
-        ey[idx_ey(size_3d - 1, y, z)] = 0.0;
-      }
-
-    for (auto y{0}; y < size_3d; ++y)
-      for (auto z{0}; z < size_3d - 1; ++z) {
-        ez[idx_ez(0, y, z)] = 0.0;
-        ez[idx_ez(size_3d - 1, y, z)] = 0.0;
-      }
-
-    for (auto x{0}; x < size_3d - 1; ++x)
-      for (auto z{0}; z < size_3d; ++z) {
-        ex[idx_ex(x, 0, z)] = 0.0;
-        ex[idx_ex(x, size_3d - 1, z)] = 0.0;
-      }
-
-    for (auto x{0}; x < size_3d; ++x)
-      for (auto z{0}; z < size_3d - 1; ++z) {
-        ez[idx_ez(x, 0, z)] = 0.0;
-        ez[idx_ez(x, size_3d - 1, z)] = 0.0;
-      }
-
-    for (auto x{0}; x < size_3d - 1; ++x)
-      for (auto y{0}; y < size_3d; ++y) {
-        ex[idx_ex(x, y, 0)] = 0.0;
-        ex[idx_ex(x, y, size_3d - 1)] = 0.0;
-      }
-
-    for (auto x{0}; x < size_3d; ++x)
-      for (auto y{0}; y < size_3d - 1; ++y) {
-        ey[idx_ey(x, y, 0)] = 0.0;
-        ey[idx_ey(x, y, size_3d - 1)] = 0.0;
-      }
-
     const int insertion_idx =
         idx_ex((size_3d - 1) / 2, (size_3d - 1) / 2, (size_3d - 1) / 2);
 
     double tau = t - t0;
     double a = M_PI * M_PI * f0 * f0 * tau * tau;
     ex[insertion_idx] += (1.0 - 2.0 * a) * std::exp(-a);
+
+    // pec
+    // for (auto y{0}; y < size_3d - 1; ++y)
+    //   for (auto z{0}; z < size_3d; ++z) {
+    //     ey[idx_ey(0, y, z)] = 0.0;
+    //     ey[idx_ey(size_3d - 1, y, z)] = 0.0;
+    //   }
+    //
+    // for (auto y{0}; y < size_3d; ++y)
+    //   for (auto z{0}; z < size_3d - 1; ++z) {
+    //     ez[idx_ez(0, y, z)] = 0.0;
+    //     ez[idx_ez(size_3d - 1, y, z)] = 0.0;
+    //   }
+    //
+    // for (auto x{0}; x < size_3d - 1; ++x)
+    //   for (auto z{0}; z < size_3d; ++z) {
+    //     ex[idx_ex(x, 0, z)] = 0.0;
+    //     ex[idx_ex(x, size_3d - 1, z)] = 0.0;
+    //   }
+    //
+    // for (auto x{0}; x < size_3d; ++x)
+    //   for (auto z{0}; z < size_3d - 1; ++z) {
+    //     ez[idx_ez(x, 0, z)] = 0.0;
+    //     ez[idx_ez(x, size_3d - 1, z)] = 0.0;
+    //   }
+    //
+    // for (auto x{0}; x < size_3d - 1; ++x)
+    //   for (auto y{0}; y < size_3d; ++y) {
+    //     ex[idx_ex(x, y, 0)] = 0.0;
+    //     ex[idx_ex(x, y, size_3d - 1)] = 0.0;
+    //   }
+    //
+    // for (auto x{0}; x < size_3d; ++x)
+    //   for (auto y{0}; y < size_3d - 1; ++y) {
+    //     ey[idx_ey(x, y, 0)] = 0.0;
+    //     ey[idx_ey(x, y, size_3d - 1)] = 0.0;
+    //   }
+
+    // abc
+    /* ABC at "x0" */
+    {
+      const int x{0};
+      for (int y{0}; y < size_3d - 1; ++y)
+        for (int z{0}; z < size_3d; ++z) {
+          ey[idx_ey(x, y, z)] =
+              eyx0[idx_eyx(y, z)] +
+              abcco * (ey[idx_ey(x + 1, y, z)] - ey[idx_ey(x, y, z)]);
+          eyx0[idx_eyx(y, z)] = ey[idx_ey(x + 1, y, z)];
+        }
+
+      for (int y{0}; y < size_3d; ++y)
+        for (int z{0}; z < size_3d - 1; ++z) {
+          ez[idx_ez(x, y, z)] =
+              ezx0[idx_ezx(y, z)] +
+              abcco * (ez[idx_ez(x + 1, y, z)] - ez[idx_ez(x, y, z)]);
+          ezx0[idx_ezx(y, z)] = ez[idx_ez(x + 1, y, z)];
+        }
+    }
+
+    /* ABC at "x1" */
+    {
+      const int x = size_3d - 1;
+      for (int y{0}; y < size_3d - 1; ++y)
+        for (int z{0}; z < size_3d; ++z) {
+          ey[idx_ey(x, y, z)] =
+              eyx1[idx_eyx(y, z)] +
+              abcco * (ey[idx_ey(x - 1, y, z)] - ey[idx_ey(x, y, z)]);
+          eyx1[idx_eyx(y, z)] = ey[idx_ey(x - 1, y, z)];
+        }
+
+      for (int y{0}; y < size_3d; ++y)
+        for (int z{0}; z < size_3d - 1; ++z) {
+          ez[idx_ez(x, y, z)] =
+              ezx1[idx_ezx(y, z)] +
+              abcco * (ez[idx_ez(x - 1, y, z)] - ez[idx_ez(x, y, z)]);
+          ezx1[idx_ezx(y, z)] = ez[idx_ez(x - 1, y, z)];
+        }
+    }
+
+    /* ABC at "y0" */
+    {
+      const int y{0};
+      for (int x{0}; x < size_3d - 1; ++x)
+        for (int z{0}; z < size_3d; ++z) {
+          ex[idx_ex(x, y, z)] =
+              exy0[idx_exy(x, z)] +
+              abcco * (ex[idx_ex(x, y + 1, z)] - ex[idx_ex(x, y, z)]);
+          exy0[idx_exy(x, z)] = ex[idx_ex(x, y + 1, z)];
+        }
+
+      for (int x{0}; x < size_3d; ++x)
+        for (int z{0}; z < size_3d - 1; ++z) {
+          ez[idx_ez(x, y, z)] =
+              ezy0[idx_ezy(x, z)] +
+              abcco * (ez[idx_ez(x, y + 1, z)] - ez[idx_ez(x, y, z)]);
+          ezy0[idx_ezy(x, z)] = ez[idx_ez(x, y + 1, z)];
+        }
+    }
+
+    /* ABC at "y1" */
+    {
+      const int y = size_3d - 1;
+      for (int x{0}; x < size_3d - 1; ++x)
+        for (int z{0}; z < size_3d; ++z) {
+          ex[idx_ex(x, y, z)] =
+              exy1[idx_exy(x, z)] +
+              abcco * (ex[idx_ex(x, y - 1, z)] - ex[idx_ex(x, y, z)]);
+          exy1[idx_exy(x, z)] = ex[idx_ex(x, y - 1, z)];
+        }
+
+      for (int x{0}; x < size_3d; ++x)
+        for (int z{0}; z < size_3d - 1; ++z) {
+          ez[idx_ez(x, y, z)] =
+              ezy1[idx_ezy(x, z)] +
+              abcco * (ez[idx_ez(x, y - 1, z)] - ez[idx_ez(x, y, z)]);
+          ezy1[idx_ezy(x, z)] = ez[idx_ez(x, y - 1, z)];
+        }
+    }
+
+    /* ABC at "z0" (bottom) */
+    {
+      const int z{0};
+      for (int x{0}; x < size_3d - 1; ++x)
+        for (int y{0}; y < size_3d; ++y) {
+          ex[idx_ex(x, y, z)] =
+              exz0[idx_exz(x, y)] +
+              abcco * (ex[idx_ex(x, y, z + 1)] - ex[idx_ex(x, y, z)]);
+          exz0[idx_exz(x, y)] = ex[idx_ex(x, y, z + 1)];
+        }
+
+      for (int x{0}; x < size_3d; ++x)
+        for (int y{0}; y < size_3d - 1; ++y) {
+          ey[idx_ey(x, y, z)] =
+              eyz0[idx_eyz(x, y)] +
+              abcco * (ey[idx_ey(x, y, z + 1)] - ey[idx_ey(x, y, z)]);
+          eyz0[idx_eyz(x, y)] = ey[idx_ey(x, y, z + 1)];
+        }
+    }
+
+    /* ABC at "z1" (top) */
+    {
+      const int z = size_3d - 1;
+      for (int x{0}; x < size_3d - 1; ++x)
+        for (int y{0}; y < size_3d; ++y) {
+          ex[idx_ex(x, y, z)] =
+              exz1[idx_exz(x, y)] +
+              abcco * (ex[idx_ex(x, y, z - 1)] - ex[idx_ex(x, y, z)]);
+          exz1[idx_exz(x, y)] = ex[idx_ex(x, y, z - 1)];
+        }
+
+      for (int x{0}; x < size_3d; ++x)
+        for (int y{0}; y < size_3d - 1; ++y) {
+          ey[idx_ey(x, y, z)] =
+              eyz1[idx_eyz(x, y)] +
+              abcco * (ey[idx_ey(x, y, z - 1)] - ey[idx_ey(x, y, z)]);
+          eyz1[idx_eyz(x, y)] = ey[idx_ey(x, y, z - 1)];
+        }
+    }
 
     std::copy(ex.begin(), ex.end(), history_ex.begin() + time * e_size);
     std::copy(ey.begin(), ey.end(), history_ey.begin() + time * e_size);
