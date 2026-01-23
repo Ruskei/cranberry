@@ -30,13 +30,14 @@ template <int N> struct Grid {
 
   void setup_coefficients() {
     const double c = Config::courants;
+    const double half_c = c * 0.5; // simulate in half-steps
     const double imp0 = Config::imp0;
-    setup_field_coeffients(cexe, cexh, c * imp0);
-    setup_field_coeffients(ceye, ceyh, c * imp0);
-    setup_field_coeffients(ceze, cezh, c * imp0);
-    setup_field_coeffients(chxh, chxe, c / imp0);
-    setup_field_coeffients(chyh, chye, c / imp0);
-    setup_field_coeffients(chzh, chze, c / imp0);
+    setup_field_coeffients(cexe, cexh, half_c * imp0);
+    setup_field_coeffients(ceye, ceyh, half_c * imp0);
+    setup_field_coeffients(ceze, cezh, half_c * imp0);
+    setup_field_coeffients(chxh, chxe, half_c / imp0);
+    setup_field_coeffients(chyh, chye, half_c / imp0);
+    setup_field_coeffients(chzh, chze, half_c / imp0);
   }
 
   void update_h() {

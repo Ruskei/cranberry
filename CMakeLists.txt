@@ -25,7 +25,10 @@ target_include_directories(cranberry
 		${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(cranberry PRIVATE ${VTK_LIBRARIES})
+target_link_libraries(cranberry
+    PRIVATE
+        ${VTK_LIBRARIES}
+)
 
 vtk_module_autoinit(
 	TARGETS cranberry

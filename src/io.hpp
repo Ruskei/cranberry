@@ -12,11 +12,12 @@
 #include "grid.hpp"
 
 template <int N> struct Writer2D {
+  std::string name;
   vtkNew<vtkImageData> image;
   int *dims;
   int slice;
 
-  Writer2D(int s) : slice{s} {
+  Writer2D(std::string n, int s) : name{n}, slice{s} {
     image->SetDimensions(N, N, 1);
     image->AllocateScalars(VTK_FLOAT, 3);
 
@@ -32,10 +33,10 @@ template <int N> struct Writer2D {
         }
 
     mkdir("out", 0755);
-    mkdir("out/2d_animation", 0755);
+    mkdir(("out/" + name).c_str(), 0755);
   }
 
-  void write_timestep(Grid<N> &grid, int time) const {
+  void write_timestep(Grid<N> &grid, double time) const {
     for (auto y{1}; y < dims[1] - 1; ++y)
       for (auto x{1}; x < dims[0] - 1; ++x) {
         float *pixel = static_cast<float *>(image->GetScalarPointer(x, y, 0));
@@ -50,15 +51,15 @@ template <int N> struct Writer2D {
 
     vtkNew<vtkXMLImageDataWriter> writer;
     const std::string file_name =
-        "out/2d_animation/efield" + std::to_string(time) + ".vti";
+        "out/" + name + "/efield" + std::to_string(time) + ".vti";
     writer->SetFileName(file_name.c_str());
     writer->SetInputData(image);
     writer->Write();
   }
 
-  void write_all(int max_time) const {
+  void write_all(double max_time, double dt) const {
     std::ofstream output;
-    output.open("out/2d_animation.pvd");
+    output.open(("out/" + name + ".pvd").c_str());
 
     output << "<?xml version=\"1.0\"?>" << std::endl;
     output << "<VTKFile type=\"Collection\" version=\"0.1\" "
@@ -66,9 +67,9 @@ template <int N> struct Writer2D {
            << std::endl;
     output << "  <Collection>" << std::endl;
 
-    for (auto t{0}; t < max_time; ++t) {
+    for (auto t{0.0}; t < max_time; t += dt) {
       output << "    <DataSet timestep=\"" << std::to_string(t)
-             << "\" group=\"\" part=\"0\" file=\"2d_animation/efield"
+             << "\" group=\"\" part=\"0\" file=\"" + name + "/efield"
              << std::to_string(t) << ".vti\" name=\"efield\"/>" << std::endl;
     }
 
@@ -102,7 +103,7 @@ template <int N> struct Writer3D {
     mkdir("out/3d_animation", 0755);
   }
 
-  void write_timestep(Grid<N> &grid, int time) const {
+  void write_timestep(Grid<N> &grid, double time) const {
     for (auto z{1}; z < dims[2] - 1; ++z)
       for (auto y{1}; y < dims[1] - 1; ++y)
         for (auto x{1}; x < dims[0] - 1; ++x) {
@@ -124,7 +125,7 @@ template <int N> struct Writer3D {
     writer->Write();
   }
 
-  void write_all(int max_time) const {
+  void write_all(double max_time, double dt) const {
     std::ofstream output;
     output.open("out/3d_animation.pvd");
 
@@ -134,7 +135,7 @@ template <int N> struct Writer3D {
            << std::endl;
     output << "  <Collection>" << std::endl;
 
-    for (auto t{0}; t < max_time; ++t) {
+    for (auto t{0.0}; t < max_time; t += dt) {
       output << "    <DataSet timestep=\"" << std::to_string(t)
              << "\" group=\"\" part=\"0\" file=\"3d_animation/efield"
              << std::to_string(t) << ".vti\" name=\"efield\"/>" << std::endl;
