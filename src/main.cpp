@@ -15,7 +15,8 @@ void run_3d() {
 
   const int size = Config::size;
 
-  const Writer2D<size> writer((size - 1) / 2);
+  // const Writer2D<size> writer((size - 1) / 2);
+  const Writer3D<size> writer;
 
   ABC<size> abc;
   Grid<size> grid;
