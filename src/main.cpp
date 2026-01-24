@@ -16,6 +16,7 @@
 #include "fdtd_types.hpp"
 #include "grid.hpp"
 #include "io.hpp"
+#include "progress_bar.hpp"
 
 struct Particle {
   double nx;
@@ -54,7 +55,8 @@ struct ParticleWriter {
     poly->GetPointData()->SetActiveVectors("velocity");
 
     vtkNew<vtkXMLPolyDataWriter> writer;
-    const std::string filename = "out/" + name + "/particles" + std::to_string(time) + ".vtp";
+    const std::string filename =
+        "out/" + name + "/particles" + std::to_string(time) + ".vtp";
     writer->SetFileName(filename.c_str());
     writer->SetInputData(poly);
     writer->Write();
@@ -242,12 +244,15 @@ void run_3d() {
         Config::A * (1.0 - 2.0 * a) * std::exp(-a);
 
     writer.write_timestep(grid, time);
+
+    if (std::fmod(time, Config::print_interval) < 1e-11)
+      print_progress(time / Config::max_time, 20);
   }
 
   writer.write_all(Config::max_time, Config::dt);
   particle_writer.write_all(Config::max_time, Config::dt);
 
-  std::cout << "Finished 3D simulation!" << std::endl;
+  print_sim_finished();
 }
 
 int main() {
