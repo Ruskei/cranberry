@@ -16,6 +16,10 @@ template <int N> struct Grid {
   Field<N, Component::Ez> ceze;
   Field<N, Component::Ez> cezh;
 
+  Field<N, Component::Jx> jx;
+  Field<N, Component::Jy> jy;
+  Field<N, Component::Jz> jz;
+
   Field<N, Component::Hx> hx;
   Field<N, Component::Hx> chxh;
   Field<N, Component::Hx> chxe;
@@ -75,8 +79,9 @@ template <int N> struct Grid {
         for (auto z{1}; z < ex.nz() - 1; ++z) {
           const double dhz_dy = hz(x, y, z) - hz(x, y - 1, z);
           const double dhy_dz = hy(x, y, z) - hy(x, y, z - 1);
-          ex(x, y, z) =
-              cexe(x, y, z) * ex(x, y, z) + cexh(x, y, z) * (dhz_dy - dhy_dz);
+          const double j = jx(x, y, z);
+          ex(x, y, z) = cexe(x, y, z) * ex(x, y, z) +
+                        cexh(x, y, z) * (dhz_dy - dhy_dz - j);
         }
 
     for (auto x{1}; x < ey.nx() - 1; ++x)
@@ -84,8 +89,9 @@ template <int N> struct Grid {
         for (auto z{1}; z < ey.nz() - 1; ++z) {
           const double dhx_dhz = hx(x, y, z) - hx(x, y, z - 1);
           const double dhz_dhx = hz(x, y, z) - hz(x - 1, y, z);
-          ey(x, y, z) =
-              ceye(x, y, z) * ey(x, y, z) + ceyh(x, y, z) * (dhx_dhz - dhz_dhx);
+          const double j = jy(x, y, z);
+          ey(x, y, z) = ceye(x, y, z) * ey(x, y, z) +
+                        ceyh(x, y, z) * (dhx_dhz - dhz_dhx - j);
         }
 
     for (auto x{1}; x < ez.nx() - 1; ++x)
@@ -93,9 +99,9 @@ template <int N> struct Grid {
         for (auto z{0}; z < ez.nz(); ++z) {
           const double dhy_dhx = hy(x, y, z) - hy(x - 1, y, z);
           const double dhx_dhy = hx(x, y, z) - hx(x, y - 1, z);
-          ez(x, y, z) =
-              ceze(x, y, z) * ez(x, y, z) + cezh(x, y, z) * (dhy_dhx - dhx_dhy);
+          const double j = jz(x, y, z);
+          ez(x, y, z) = ceze(x, y, z) * ez(x, y, z) +
+                        cezh(x, y, z) * (dhy_dhx - dhx_dhy - j);
         }
   }
 };
-

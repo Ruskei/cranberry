@@ -3,7 +3,8 @@
 #include <cmath>
 #include <vector>
 
-enum class Component { Ex, Ey, Ez, Hx, Hy, Hz };
+//J = E here but we keep duplicate for clarity
+enum class Component { Ex, Ey, Ez, Jx, Jy, Jz, Hx, Hy, Hz };
 
 template <int N, Component C> struct Extents;
 
@@ -16,6 +17,19 @@ template <int N> struct Extents<N, Component::Ey> {
   static constexpr double ox = 0.0, oy = 0.5, oz = 0.0;
 };
 template <int N> struct Extents<N, Component::Ez> {
+  static constexpr int nx = N, ny = N, nz = N - 1;
+  static constexpr double ox = 0.0, oy = 0.0, oz = 0.5;
+};
+
+template <int N> struct Extents<N, Component::Jx> {
+  static constexpr int nx = N - 1, ny = N, nz = N;
+  static constexpr double ox = 0.5, oy = 0.0, oz = 0.0;
+};
+template <int N> struct Extents<N, Component::Jy> {
+  static constexpr int nx = N, ny = N - 1, nz = N;
+  static constexpr double ox = 0.0, oy = 0.5, oz = 0.0;
+};
+template <int N> struct Extents<N, Component::Jz> {
   static constexpr int nx = N, ny = N, nz = N - 1;
   static constexpr double ox = 0.0, oy = 0.0, oz = 0.5;
 };

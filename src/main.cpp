@@ -19,9 +19,13 @@
 #include "progress_bar.hpp"
 
 struct Particle {
-  double nx;
-  double ny;
-  double nz;
+  double px;
+  double py;
+  double pz;
+
+  double p_prev_x;
+  double p_prev_y;
+  double p_prev_z;
 
   double vx;
   double vy;
@@ -45,7 +49,7 @@ struct ParticleWriter {
     velocity->SetName("velocity");
     velocity->SetNumberOfComponents(3);
     for (const auto &p : particles) {
-      points->InsertNextPoint(p.nx, p.ny, p.nz);
+      points->InsertNextPoint(p.px, p.py, p.pz);
       velocity->InsertNextTuple3(p.vx, p.vy, p.vz);
     }
 
@@ -128,9 +132,9 @@ void push_particles(const Grid &grid, std::vector<Particle> &particles) {
   const double epsilon = 1e-11;
   const double dt = Config::dt;
   for (auto &p : particles) {
-    const double nx = p.nx;
-    const double ny = p.ny;
-    const double nz = p.nz;
+    const double nx = p.px;
+    const double ny = p.py;
+    const double nz = p.pz;
 
     double vx = p.vx;
     double vy = p.vy;
@@ -196,10 +200,14 @@ void push_particles(const Grid &grid, std::vector<Particle> &particles) {
     p.vx = u_next_x / lorentz_next;
     p.vy = u_next_y / lorentz_next;
     p.vz = u_next_z / lorentz_next;
+    
+    p.p_prev_x = p.px;
+    p.p_prev_y = p.py;
+    p.p_prev_z = p.pz;
 
-    p.nx += p.vx * dt;
-    p.ny += p.vy * dt;
-    p.nz += p.vz * dt;
+    p.px += p.vx * dt;
+    p.py += p.vy * dt;
+    p.pz += p.vz * dt;
   }
 }
 
