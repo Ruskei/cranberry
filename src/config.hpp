@@ -1,12 +1,13 @@
 #pragma once
 
+#include <cmath>
 namespace Config { // max courant's is 1 / sqrt(3)
-inline constexpr double print_interval = 10;
+inline constexpr int print_interval = 10;
 
-inline constexpr double dt = 0.5;
+inline const double dt = 1.0 / std::sqrt(3.0);
 inline const double courants = dt;
 inline const double abcco = (courants - 1.0) / (courants + 1.0);
-inline constexpr int size = 40;
+inline constexpr int size = 100;
 inline constexpr double max_time = 100.0;
 inline constexpr double imp0 = 1.0;
 inline constexpr double f0 = 0.08;

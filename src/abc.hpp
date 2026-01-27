@@ -12,8 +12,8 @@ template <int N> struct ABC {
 
     Slab() : v(NX * NY) {}
 
-    double &operator()(int a, int b) { return v[a * NX + b]; }
-    const double &operator()(int a, int b) const { return v[a * NX + b]; }
+    double &operator()(int a, int b) { return v[a * NY + b]; }
+    const double &operator()(int a, int b) const { return v[a * NY + b]; }
   };
 
   using WallA = Slab<N - 1, N>;
@@ -40,10 +40,6 @@ template <int N> struct ABC {
     auto &ey = grid.ey;
     auto &ez = grid.ez;
 
-    auto &hx = grid.hx;
-    auto &hy = grid.hy;
-    auto &hz = grid.hz;
-
     {
       const int x{0};
       for (int y{0}; y < N - 1; ++y)
@@ -54,7 +50,8 @@ template <int N> struct ABC {
 
       for (int y{0}; y < N; ++y)
         for (int z{0}; z < N - 1; ++z) {
-          ez(x, y, z) = ezx0(y, z) + abcco * (ez(x + 1, y, z) - ez(x, y, z));
+          const double co = ezx0(y, z);
+          ez(x, y, z) = co + abcco * (ez(x + 1, y, z) - ez(x, y, z));
           ezx0(y, z) = ez(x + 1, y, z);
         }
     }

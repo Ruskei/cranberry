@@ -1,4 +1,5 @@
-#pragma "once"
+#include <algorithm>
+#pragma once
 
 #include <vtkImageData.h>
 #include <vtkImageMagnitude.h>
@@ -37,12 +38,38 @@ template <int N> struct Writer2D {
   }
 
   void write_timestep(Grid<N> &grid, double time) const {
+    std::vector<double> mags;
+    mags.reserve((dims[1] - 2) * (dims[0] - 2));
+
+    for (auto y{1}; y < dims[1] - 1; ++y)
+      for (auto x{1}; x < dims[0] - 1; ++x) {
+        const double ex = grid.ex(x, y, slice);
+        const double ey = grid.ey(x, y, slice);
+        const double ez = grid.ez(x, y, slice);
+        mags.push_back(std::sqrt(ex * ex + ey * ey + ez * ez));
+      }
+
+    const int k = std::floor(0.995 * (mags.size() - 1));
+    std::nth_element(mags.begin(), mags.begin() + k, mags.end());
+    const double cutoff = mags[k];
     for (auto y{1}; y < dims[1] - 1; ++y)
       for (auto x{1}; x < dims[0] - 1; ++x) {
         float *pixel = static_cast<float *>(image->GetScalarPointer(x, y, 0));
-        pixel[0] = grid.ex(x, y, slice);
-        pixel[1] = grid.ey(x, y, slice);
-        pixel[2] = grid.ez(x, y, slice);
+
+        double ex = grid.ex(x, y, slice);
+        double ey = grid.ey(x, y, slice);
+        double ez = grid.ez(x, y, slice);
+
+        const double m = std::sqrt(ex * ex + ey * ey + ez * ez);
+        if (m > cutoff) {
+          ex /= (m / cutoff);
+          ey /= (m / cutoff);
+          ez /= (m / cutoff);
+        }
+
+        pixel[0] = ex;
+        pixel[1] = ey;
+        pixel[2] = ez;
       }
 
     image->GetPointData()->SetActiveVectors("ImageScalars");
@@ -104,13 +131,41 @@ template <int N> struct Writer3D {
   }
 
   void write_timestep(Grid<N> &grid, double time) const {
+    std::vector<double> mags;
+    mags.reserve((dims[2] - 2) * (dims[1] - 2) * (dims[0] - 2));
+
+    for (auto z{1}; z < dims[2] - 1; ++z)
+      for (auto y{1}; y < dims[1] - 1; ++y)
+        for (auto x{1}; x < dims[0] - 1; ++x) {
+          const double ex = grid.ex(x, y, z);
+          const double ey = grid.ey(x, y, z);
+          const double ez = grid.ez(x, y, z);
+          mags.push_back(std::sqrt(ex * ex + ey * ey + ez * ez));
+        }
+
+    const int k = std::floor(0.995 * (mags.size() - 1));
+    std::nth_element(mags.begin(), mags.begin() + k, mags.end());
+    const double cutoff = mags[k];
+
     for (auto z{1}; z < dims[2] - 1; ++z)
       for (auto y{1}; y < dims[1] - 1; ++y)
         for (auto x{1}; x < dims[0] - 1; ++x) {
           float *pixel = static_cast<float *>(image->GetScalarPointer(x, y, z));
-          pixel[0] = grid.ex(x, y, z);
-          pixel[1] = grid.ey(x, y, z);
-          pixel[2] = grid.ez(x, y, z);
+
+          double ex = grid.ex(x, y, z);
+          double ey = grid.ey(x, y, z);
+          double ez = grid.ez(x, y, z);
+
+          const double m = std::sqrt(ex * ex + ey * ey + ez * ez);
+          if (m > cutoff) {
+            ex /= (m / cutoff);
+            ey /= (m / cutoff);
+            ez /= (m / cutoff);
+          }
+
+          pixel[0] = ex;
+          pixel[1] = ey;
+          pixel[2] = ez;
         }
 
     image->GetPointData()->SetActiveVectors("ImageScalars");
