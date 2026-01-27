@@ -19,6 +19,7 @@ endif()
 
 add_executable(cranberry
 	src/main.cpp
+	src/particles.cpp
 )
 
 target_include_directories(cranberry
