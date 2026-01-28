@@ -66,7 +66,7 @@ template <int N> struct Grid {
         for (auto y{js}; y <= je; ++y)
           for (auto z{ks}; z <= ke; ++z) {
             charge(x, y, z) += -p.q * form_factor(px, x) * form_factor(py, y) *
-                              form_factor(pz, z);
+                               form_factor(pz, z);
           }
     }
   }
@@ -91,6 +91,7 @@ template <int N> struct Grid {
   Grid(std::vector<Particle> particles) : particles{std::move(particles)} {
     std::cout << "Depositing charge..." << std::endl;
     deposit_charge(this->particles, charge);
+    binom_smooth_field(charge);
     std::cout << "Solving potential" << std::endl;
     solve_potential(charge, potential);
     std::cout << "Applying potential" << std::endl;
@@ -168,6 +169,10 @@ template <int N> struct Grid {
           ez(x, y, z) = ceze(x, y, z) * ez(x, y, z) +
                         0.5 * cezh(x, y, z) * (dhy_dhx - dhx_dhy - j);
         }
+  }
+
+  void step_particles() {
+    for (auto &p : particles) p.age++;
   }
 
   void push_particles() {
@@ -315,6 +320,52 @@ template <int N> struct Grid {
           }
         }
     }
+  }
+
+  template<Component C>
+  void binom_smooth_field(Field<N, C> &field) {
+    for (auto y{0}; y < field.ny(); ++y)
+      for (auto z{0}; z < field.nz(); ++z) {
+        double left = field(0, y, z);
+        double center = field(1, y, z);
+        for (auto x{1}; x < field.nx() - 1; ++x) {
+          const double right = field(x + 1, y, z);
+          field(x, y, z) = 0.25 * left + 0.5 * center + 0.25 * right;
+
+          left = center;
+          center = right;
+        }
+      }
+    for (auto x{0}; x < field.nx(); ++x)
+      for (auto z{0}; z < field.nz(); ++z) {
+        double left = field(x, 0, z);
+        double center = field(x, 1, z);
+        for (auto y{1}; y < field.ny() - 1; ++y) {
+          const double right = field(x, y + 1, z);
+          field(x, y, z) = 0.25 * left + 0.5 * center + 0.25 * right;
+
+          left = center;
+          center = right;
+        }
+      }
+    for (auto x{0}; x < field.nx(); ++x)
+      for (auto y{0}; y < field.ny(); ++y) {
+        double left = field(x, y, 0);
+        double center = field(x, y, 1);
+        for (auto z{1}; z < field.nz() - 1; ++z) {
+          const double right = field(x, y, z + 1);
+          field(x, y, z) = 0.25 * left + 0.5 * center + 0.25 * right;
+
+          left = center;
+          center = right;
+        }
+      }
+  }
+
+  void smooth_currents() {
+    binom_smooth_field(jx);
+    binom_smooth_field(jy);
+    binom_smooth_field(jz);
   }
 
   void check_currents() {

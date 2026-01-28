@@ -24,7 +24,8 @@ void run_3d() {
 
   ABC<size> abc;
   Grid<size> grid(std::vector<Particle>{
-      Particle{25, 5, 25, 0, 0.5, 0, 1, 1},
+      Particle{20, 15, 20, 0, 0.5, 0, 1, 1},
+      Particle{24, 25, 20, 0, 0, 0, 1, 1},
   });
 
   const Writer2D<size> writer("2d_animation", (size - 1) / 2);
@@ -48,9 +49,11 @@ void run_3d() {
     grid.half_update_h();
     abc.apply(grid);
 
+    grid.step_particles();
     grid.push_particles();
     grid.deposit_currents();
-    grid.check_currents();
+    // grid.check_currents();
+    grid.smooth_currents();
 
     particle_writer.write_particles(grid.particles, time);
 
