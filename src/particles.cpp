@@ -7,8 +7,6 @@
 #include <vtkPolyData.h>
 #include <vtkXMLPolyDataWriter.h>
 
-#include "config.hpp"
-
 void ParticleWriter::write_particles(const std::vector<Particle> &particles,
                                      double time) {
   vtkNew<vtkPoints> points;

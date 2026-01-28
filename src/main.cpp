@@ -23,7 +23,9 @@ void run_3d() {
   const int size = Config::size;
 
   ABC<size> abc;
-  Grid<size> grid(std::vector<Particle>{Particle{25, 5, 25, 0, 0.2, 0, 1, 1}});
+  Grid<size> grid(std::vector<Particle>{
+      Particle{25, 5, 25, 0, 0.5, 0, 1, 1},
+  });
 
   const Writer2D<size> writer("2d_animation", (size - 1) / 2);
   // const Writer3D<size> writer;

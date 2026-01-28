@@ -65,7 +65,7 @@ template <int N> struct Grid {
       for (auto x{is}; x <= ie; ++x)
         for (auto y{js}; y <= je; ++y)
           for (auto z{ks}; z <= ke; ++z) {
-            charge(x, y, z) = -p.q * form_factor(px, x) * form_factor(py, y) *
+            charge(x, y, z) += -p.q * form_factor(px, x) * form_factor(py, y) *
                               form_factor(pz, z);
           }
     }
