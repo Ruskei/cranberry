@@ -54,9 +54,9 @@ template <int N> struct Grid {
       const int j = static_cast<int>(std::floor(py));
       const int k = static_cast<int>(std::floor(pz));
 
-      const int is = std::max(0, i);
-      const int js = std::max(0, j);
-      const int ks = std::max(0, k);
+      const int is = std::max(0, i - 1);
+      const int js = std::max(0, j - 1);
+      const int ks = std::max(0, k - 1);
 
       const int ie = std::min(charge.nx() - 1, i + 1);
       const int je = std::min(charge.ny() - 1, j + 1);
@@ -275,9 +275,9 @@ template <int N> struct Grid {
       const int pj = static_cast<int>(std::floor(ppy));
       const int pk = static_cast<int>(std::floor(ppz));
 
-      const int is = std::max(0, std::min(i, pi));
-      const int js = std::max(0, std::min(j, pj));
-      const int ks = std::max(0, std::min(k, pk));
+      const int is = std::max(0, std::min(i, pi) - 1);
+      const int js = std::max(0, std::min(j, pj) - 1);
+      const int ks = std::max(0, std::min(k, pk) - 1);
 
       const int ie = std::min(jx.nx() - 1, std::max(i, pi) + 1);
       const int je = std::min(jy.ny() - 1, std::max(j, pj) + 1);
@@ -337,9 +337,9 @@ template <int N> struct Grid {
       const int pj = static_cast<int>(std::floor(ppy));
       const int pk = static_cast<int>(std::floor(ppz));
 
-      const int is = std::max(0, std::min(i, pi));
-      const int js = std::max(0, std::min(j, pj));
-      const int ks = std::max(0, std::min(k, pk));
+      const int is = std::max(0, std::min(i, pi) - 1);
+      const int js = std::max(0, std::min(j, pj) - 1);
+      const int ks = std::max(0, std::min(k, pk) - 1);
 
       const int ie = std::min(jx.nx() - 1, std::max(i, pi) + 1);
       const int je = std::min(jy.ny() - 1, std::max(j, pj) + 1);

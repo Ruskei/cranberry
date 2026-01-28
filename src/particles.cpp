@@ -54,14 +54,15 @@ void ParticleWriter::write_all(double max_time, double dt) {
 }
 
 double form_factor(double px, int nx) {
-  const int i = static_cast<int>(std::floor(px));
+  const double r = std::abs(px - nx);
 
-  if (nx < i || nx > i + 1)
+  if (r < 0.5)
+    return 0.75 - r * r;
+  else if (r < 1.5) {
+    const double t = 1.5 - r;
+    return 0.5 * t * t;
+  } else
     return 0.0;
-
-  const double fx = px - i;
-
-  return (i == nx) ? 1.0 - fx : fx;
 }
 
 double form_factor_diff_helper(double s_o_x, double s_o_y, double s_o_z,
@@ -73,4 +74,3 @@ double form_factor_diff_helper(double s_o_x, double s_o_y, double s_o_z,
           s_n_x * s_n_y * s_o_z - s_o_x * s_n_y * s_o_z) /
              6.0;
 }
-
