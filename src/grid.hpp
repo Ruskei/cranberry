@@ -30,13 +30,13 @@ template <int N> struct Grid {
       const int j = static_cast<int>(std::floor(py));
       const int k = static_cast<int>(std::floor(pz));
 
-      const int is = std::max(0, i - 1);
-      const int js = std::max(0, j - 1);
-      const int ks = std::max(0, k - 1);
+      const int is = std::max(0, i - 2);
+      const int js = std::max(0, j - 2);
+      const int ks = std::max(0, k - 2);
 
-      const int ie = std::min(charge.nx() - 1, i + 1);
-      const int je = std::min(charge.ny() - 1, j + 1);
-      const int ke = std::min(charge.nz() - 1, k + 1);
+      const int ie = std::min(charge.nx() - 1, i + 2);
+      const int je = std::min(charge.ny() - 1, j + 2);
+      const int ke = std::min(charge.nz() - 1, k + 2);
 
       for (auto x{is}; x <= ie; ++x)
         for (auto y{js}; y <= je; ++y)
@@ -257,13 +257,13 @@ template <int N> struct Grid {
       const int pj = static_cast<int>(std::floor(ppy));
       const int pk = static_cast<int>(std::floor(ppz));
 
-      const int is = std::max(0, std::min(i, pi) - 1);
-      const int js = std::max(0, std::min(j, pj) - 1);
-      const int ks = std::max(0, std::min(k, pk) - 1);
+      const int is = std::max(0, std::min(i, pi) - 2);
+      const int js = std::max(0, std::min(j, pj) - 2);
+      const int ks = std::max(0, std::min(k, pk) - 2);
 
-      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + 1);
-      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + 1);
-      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + 1);
+      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + 2);
+      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + 2);
+      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + 2);
 
       const double move_co = -p.q / Config::dt;
 
@@ -345,9 +345,9 @@ template <int N> struct Grid {
   }
 
   void check_currents() {
-    for (const auto &p : particles) {
-      double residual{};
+    Field<N, Component::Charge> charge_diff;
 
+    for (const auto &p : particles) {
       const double px = p.px;
       const double py = p.py;
       const double pz = p.pz;
@@ -364,13 +364,13 @@ template <int N> struct Grid {
       const int pj = static_cast<int>(std::floor(ppy));
       const int pk = static_cast<int>(std::floor(ppz));
 
-      const int is = std::max(0, std::min(i, pi) - 1);
-      const int js = std::max(0, std::min(j, pj) - 1);
-      const int ks = std::max(0, std::min(k, pk) - 1);
+      const int is = std::max(0, std::min(i, pi) - 2);
+      const int js = std::max(0, std::min(j, pj) - 2);
+      const int ks = std::max(0, std::min(k, pk) - 2);
 
-      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + 1);
-      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + 1);
-      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + 1);
+      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + 2);
+      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + 2);
+      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + 2);
 
       for (auto x{is}; x <= ie; ++x)
         for (auto y{js}; y <= je; ++y)
@@ -381,24 +381,32 @@ template <int N> struct Grid {
                                        form_factor(ppy, y) *
                                        form_factor(ppz, z);
 
-            const double clamped_x = std::max(0, x - 1);
-            const double clamped_y = std::max(0, y - 1);
-            const double clamped_z = std::max(0, z - 1);
-
-            const double div_J = (J.x(x, y, z) - J.x(clamped_x, y, z)) +
-                                 (J.y(x, y, z) - J.y(x, clamped_y, z)) +
-                                 (J.z(x, y, z) - J.z(x, y, clamped_z));
-
-            // if (std::abs(div_J) > 0.0)
-            //   std::cout << "∇∙J_(" << x << "," << y << "," << z << ")=" <<
-            //   div_J << std::endl;
-
-            residual += ((charge - charge_prev) / Config::dt + div_J);
+            charge_diff(x, y, z) += (charge - charge_prev);
           }
-
-      if (std::abs(residual) > 1e-11)
-        std::cout << "continuity residual: " << residual << " at age: " << p.age
-                  << std::endl;
     }
+
+    double total_charge_diff = 0.0;
+    double total_div_J = 0.0;
+
+    for (auto x{1}; x < charge_diff.nx() - 1; ++x)
+      for (auto y{1}; y < charge_diff.ny() - 1; ++y)
+        for (auto z{1}; z < charge_diff.nz() - 1; ++z) {
+          const double timed_charge_diff = charge_diff(x, y, z) / Config::dt;
+          const double div_J = (J.x(x, y, z) - J.x(x - 1, y, z)) +
+                               (J.y(x, y, z) - J.y(x, y - 1, z)) +
+                               (J.z(x, y, z) - J.z(x, y, z - 1));
+
+          total_div_J += div_J;
+          total_charge_diff += timed_charge_diff;
+          const double residual = (timed_charge_diff + div_J);
+          if (std::abs(residual) > 1e-11)
+            std::cout << "  R=" << residual << ", Δρ/Δt=" << timed_charge_diff
+                      << ", ΔJ=" << div_J << std::endl;
+        }
+
+    if (std::abs(total_charge_diff) > 1e-11)
+      std::cout << "Δp/Δt=" << total_charge_diff << std::endl;
+    if (std::abs(total_div_J) > 1e-11)
+      std::cout << "∇J=" << total_div_J << std::endl;
   }
 };

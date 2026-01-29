@@ -45,13 +45,13 @@ struct ParticleWriter {
   void write_all(double max_time, double dt);
 };
 
-double form_factor(double px, int nx);
+double form_factor(double px, double nx);
 
 double form_factor_diff_helper(double s_o_x, double s_o_y, double s_o_z,
                                double s_n_x, double s_n_y, double s_n_z);
 
 template <CartesianComponent C>
-double form_factor_diff(const Particle &particle, int i, int j, int k) {
+double form_factor_diff(const Particle &particle, double i, double j, double k) {
   const double px = particle.px;
   const double py = particle.py;
   const double pz = particle.pz;

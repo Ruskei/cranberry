@@ -53,7 +53,7 @@ void ParticleWriter::write_all(double max_time, double dt) {
   output.close();
 }
 
-double form_factor(double px, int nx) {
+double form_factor(double px, double nx) {
   const double r = std::abs(px - nx);
 
   if (r < 0.5)
