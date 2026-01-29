@@ -23,7 +23,7 @@ double calculate_residuals(const Field<N, Component::Charge> &charge,
 template <int N>
 void solve_potential(const Field<N, Component::Charge> &charge,
                      Field<N, Component::Potential> &potential) {
-  for (auto i{0}; i < 1'000; ++i)
+  for (auto i{0}; i < 5'000; ++i)
     for (auto x{1}; x < N - 2; ++x)
       for (auto y{1}; y < N - 2; ++y)
         for (auto z{1}; z < N - 2; ++z) {

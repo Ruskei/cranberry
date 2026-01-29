@@ -24,8 +24,8 @@ void run_3d() {
 
   ABC<size> abc;
   Grid<size> grid(std::vector<Particle>{
-      Particle{20, 10, 20, 0, 0.5, 0, 1, 1},
-      Particle{20, 15, 20, 0, 0.5, 0, -1, 1},
+      Particle{20, 10, 20, 0, 0.8, 0, 1, 1},
+      // Particle{20, 25, 20, 0, 0, 0, -1, 1},
   });
 
   const Writer2D<size> writer("2d_animation", (size - 1) / 2);
@@ -60,6 +60,8 @@ void run_3d() {
     grid.half_update_h();
     grid.half_update_e();
     abc.apply(grid);
+
+    grid.check_gauss();
 
     // if (time > 30.0) {
     // double tau = time - Config::t0;

@@ -409,4 +409,23 @@ template <int N> struct Grid {
     if (std::abs(total_div_J) > 1e-11)
       std::cout << "∇J=" << total_div_J << std::endl;
   }
+
+  void check_gauss() {
+    double total_div_E = 0.0;
+    double total_charge = 0.0;
+    for (auto x{2}; x < E.x.nx() - 2; ++x)
+      for (auto y{2}; y < E.y.ny() - 2; ++y)
+        for (auto z{2}; z < E.z.nz() - 2; ++z) {
+          const double div_E = (E.x(x, y, z) - E.x(x - 1, y, z)) +
+                               (E.y(x, y, z) - E.y(x, y - 1, z)) +
+                               (E.z(x, y, z) - E.z(x, y, z - 1));
+          total_div_E += div_E;
+          total_charge += charge(x, y, z);
+        }
+
+    const double residual = total_div_E + total_charge;
+    if (std::abs(residual) > 1e-9)
+      std::cout << "Σ∇∙E=" << total_div_E << ", Σρ=" << total_charge
+                << std::endl;
+  }
 };
