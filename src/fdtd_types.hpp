@@ -125,6 +125,40 @@ template <int N, Component C> struct Field {
   }
 };
 
+template <int N> struct EField {
+  Field<N, Component::Ex> x;
+  Field<N, Component::Ex> cxe;
+  Field<N, Component::Ex> cxh;
+
+  Field<N, Component::Ey> y;
+  Field<N, Component::Ey> cye;
+  Field<N, Component::Ey> cyh;
+
+  Field<N, Component::Ez> z;
+  Field<N, Component::Ez> cze;
+  Field<N, Component::Ez> czh;
+};
+
+template <int N> struct HField {
+  Field<N, Component::Hx> x;
+  Field<N, Component::Hx> cxh;
+  Field<N, Component::Hx> cxe;
+
+  Field<N, Component::Hy> y;
+  Field<N, Component::Hy> cyh;
+  Field<N, Component::Hy> cye;
+
+  Field<N, Component::Hz> z;
+  Field<N, Component::Hz> czh;
+  Field<N, Component::Hz> cze;
+};
+
+template <int N> struct JField {
+  Field<N, Component::Jx> x;
+  Field<N, Component::Jy> y;
+  Field<N, Component::Jz> z;
+};
+
 template <int N, Component C>
 void setup_field_coeffients(Field<N, C> &ca, Field<N, C> &cb, double factor) {
   using l = Layout<N, C>;

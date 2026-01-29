@@ -10,33 +10,9 @@
 #include "particles.hpp"
 
 template <int N> struct Grid {
-  Field<N, Component::Ex> ex;
-  Field<N, Component::Ex> cexe;
-  Field<N, Component::Ex> cexh;
-
-  Field<N, Component::Ey> ey;
-  Field<N, Component::Ey> ceye;
-  Field<N, Component::Ey> ceyh;
-
-  Field<N, Component::Ez> ez;
-  Field<N, Component::Ez> ceze;
-  Field<N, Component::Ez> cezh;
-
-  Field<N, Component::Jx> jx;
-  Field<N, Component::Jy> jy;
-  Field<N, Component::Jz> jz;
-
-  Field<N, Component::Hx> hx;
-  Field<N, Component::Hx> chxh;
-  Field<N, Component::Hx> chxe;
-
-  Field<N, Component::Hy> hy;
-  Field<N, Component::Hy> chyh;
-  Field<N, Component::Hy> chye;
-
-  Field<N, Component::Hz> hz;
-  Field<N, Component::Hz> chzh;
-  Field<N, Component::Hz> chze;
+  EField<N> E;
+  JField<N> J;
+  HField<N> H;
 
   Field<N, Component::Charge> charge;
   Field<N, Component::Potential> potential;
@@ -72,20 +48,20 @@ template <int N> struct Grid {
   }
 
   void apply_potential() {
-    for (auto x{1}; x < ex.nx() - 1; ++x)
-      for (auto y{2}; y < ex.ny() - 2; ++y)
-        for (auto z{2}; z < ex.nz() - 2; ++z)
-          ex(x, y, z) = potential(x + 1, y, z) - potential(x, y, z);
+    for (auto x{1}; x < E.x.nx() - 1; ++x)
+      for (auto y{2}; y < E.x.ny() - 2; ++y)
+        for (auto z{2}; z < E.x.nz() - 2; ++z)
+          E.x(x, y, z) = potential(x + 1, y, z) - potential(x, y, z);
 
-    for (auto x{2}; x < ey.nx() - 2; ++x)
-      for (auto y{1}; y < ey.ny() - 1; ++y)
-        for (auto z{2}; z < ey.nz() - 2; ++z)
-          ey(x, y, z) = potential(x, y + 1, z) - potential(x, y, z);
+    for (auto x{2}; x < E.y.nx() - 2; ++x)
+      for (auto y{1}; y < E.y.ny() - 1; ++y)
+        for (auto z{2}; z < E.y.nz() - 2; ++z)
+          E.y(x, y, z) = potential(x, y + 1, z) - potential(x, y, z);
 
-    for (auto x{2}; x < ez.nx() - 2; ++x)
-      for (auto y{2}; y < ez.ny() - 2; ++y)
-        for (auto z{1}; z < ez.nz() - 1; ++z)
-          ez(x, y, z) = potential(x, y, z + 1) - potential(x, y, z);
+    for (auto x{2}; x < E.z.nx() - 2; ++x)
+      for (auto y{2}; y < E.z.ny() - 2; ++y)
+        for (auto z{1}; z < E.z.nz() - 1; ++z)
+          E.z(x, y, z) = potential(x, y, z + 1) - potential(x, y, z);
   }
 
   Grid(std::vector<Particle> particles) : particles{std::move(particles)} {
@@ -102,77 +78,78 @@ template <int N> struct Grid {
   void setup_coefficients() {
     const double c = Config::courants;
     const double imp0 = Config::imp0;
-    setup_field_coeffients(cexe, cexh, c * imp0);
-    setup_field_coeffients(ceye, ceyh, c * imp0);
-    setup_field_coeffients(ceze, cezh, c * imp0);
-    setup_field_coeffients(chxh, chxe, c / imp0);
-    setup_field_coeffients(chyh, chye, c / imp0);
-    setup_field_coeffients(chzh, chze, c / imp0);
+    setup_field_coeffients(E.cxe, E.cxh, c * imp0);
+    setup_field_coeffients(E.cye, E.cyh, c * imp0);
+    setup_field_coeffients(E.cze, E.czh, c * imp0);
+    setup_field_coeffients(H.cxh, H.cxe, c / imp0);
+    setup_field_coeffients(H.cyh, H.cye, c / imp0);
+    setup_field_coeffients(H.czh, H.cze, c / imp0);
   }
 
   void half_update_h() {
-    for (auto x{0}; x < hx.nx(); ++x)
-      for (auto y{0}; y < hx.ny(); ++y)
-        for (auto z{0}; z < hx.nz(); ++z) {
-          const double dey_dz = ey(x, y, z + 1) - ey(x, y, z);
-          const double dez_dy = ez(x, y + 1, z) - ez(x, y, z);
-          hx(x, y, z) = chxh(x, y, z) * hx(x, y, z) +
-                        0.5 * chxe(x, y, z) * (dey_dz - dez_dy);
+    for (auto x{0}; x < H.x.nx(); ++x)
+      for (auto y{0}; y < H.x.ny(); ++y)
+        for (auto z{0}; z < H.x.nz(); ++z) {
+          const double dey_dz = E.y(x, y, z + 1) - E.y(x, y, z);
+          const double dez_dy = E.z(x, y + 1, z) - E.z(x, y, z);
+          H.x(x, y, z) = H.cxh(x, y, z) * H.x(x, y, z) +
+                         0.5 * H.cxe(x, y, z) * (dey_dz - dez_dy);
         }
 
-    for (auto x{0}; x < hy.nx(); ++x)
-      for (auto y{0}; y < hy.ny(); ++y)
-        for (auto z{0}; z < hy.nz(); ++z) {
-          const double dex_dz = ex(x, y, z + 1) - ex(x, y, z);
-          const double dez_dx = ez(x + 1, y, z) - ez(x, y, z);
-          hy(x, y, z) = chyh(x, y, z) * hy(x, y, z) +
-                        0.5 * chye(x, y, z) * (dez_dx - dex_dz);
+    for (auto x{0}; x < H.y.nx(); ++x)
+      for (auto y{0}; y < H.y.ny(); ++y)
+        for (auto z{0}; z < H.y.nz(); ++z) {
+          const double dex_dz = E.x(x, y, z + 1) - E.x(x, y, z);
+          const double dez_dx = E.z(x + 1, y, z) - E.z(x, y, z);
+          H.y(x, y, z) = H.cyh(x, y, z) * H.y(x, y, z) +
+                         0.5 * H.cye(x, y, z) * (dez_dx - dex_dz);
         }
 
-    for (auto x{0}; x < hz.nx(); ++x)
-      for (auto y{0}; y < hz.ny(); ++y)
-        for (auto z{0}; z < hz.nz(); ++z) {
-          const double dex_dy = ex(x, y + 1, z) - ex(x, y, z);
-          const double dey_dx = ey(x + 1, y, z) - ey(x, y, z);
-          hz(x, y, z) = chzh(x, y, z) * hz(x, y, z) +
-                        0.5 * chze(x, y, z) * (dex_dy - dey_dx);
+    for (auto x{0}; x < H.z.nx(); ++x)
+      for (auto y{0}; y < H.z.ny(); ++y)
+        for (auto z{0}; z < H.z.nz(); ++z) {
+          const double dex_dy = E.x(x, y + 1, z) - E.x(x, y, z);
+          const double dey_dx = E.y(x + 1, y, z) - E.y(x, y, z);
+          H.z(x, y, z) = H.czh(x, y, z) * H.z(x, y, z) +
+                         0.5 * H.cze(x, y, z) * (dex_dy - dey_dx);
         }
   }
 
   void half_update_e() {
-    for (auto x{0}; x < ex.nx(); ++x)
-      for (auto y{1}; y < ex.ny() - 1; ++y)
-        for (auto z{1}; z < ex.nz() - 1; ++z) {
-          const double dhz_dy = hz(x, y, z) - hz(x, y - 1, z);
-          const double dhy_dz = hy(x, y, z) - hy(x, y, z - 1);
-          const double j = jx(x, y, z);
-          ex(x, y, z) = cexe(x, y, z) * ex(x, y, z) +
-                        0.5 * cexh(x, y, z) * (dhz_dy - dhy_dz - j);
+    for (auto x{0}; x < E.x.nx(); ++x)
+      for (auto y{1}; y < E.x.ny() - 1; ++y)
+        for (auto z{1}; z < E.x.nz() - 1; ++z) {
+          const double dhz_dy = H.z(x, y, z) - H.z(x, y - 1, z);
+          const double dhy_dz = H.y(x, y, z) - H.y(x, y, z - 1);
+          const double j = J.x(x, y, z);
+          E.x(x, y, z) = E.cxe(x, y, z) * E.x(x, y, z) +
+                         0.5 * E.cxh(x, y, z) * (dhz_dy - dhy_dz - j);
         }
 
-    for (auto x{1}; x < ey.nx() - 1; ++x)
-      for (auto y{0}; y < ey.ny(); ++y)
-        for (auto z{1}; z < ey.nz() - 1; ++z) {
-          const double dhx_dhz = hx(x, y, z) - hx(x, y, z - 1);
-          const double dhz_dhx = hz(x, y, z) - hz(x - 1, y, z);
-          const double j = jy(x, y, z);
-          ey(x, y, z) = ceye(x, y, z) * ey(x, y, z) +
-                        0.5 * ceyh(x, y, z) * (dhx_dhz - dhz_dhx - j);
+    for (auto x{1}; x < E.y.nx() - 1; ++x)
+      for (auto y{0}; y < E.y.ny(); ++y)
+        for (auto z{1}; z < E.y.nz() - 1; ++z) {
+          const double dhx_dhz = H.x(x, y, z) - H.x(x, y, z - 1);
+          const double dhz_dhx = H.z(x, y, z) - H.z(x - 1, y, z);
+          const double j = J.y(x, y, z);
+          E.y(x, y, z) = E.cye(x, y, z) * E.y(x, y, z) +
+                         0.5 * E.cyh(x, y, z) * (dhx_dhz - dhz_dhx - j);
         }
 
-    for (auto x{1}; x < ez.nx() - 1; ++x)
-      for (auto y{1}; y < ez.ny() - 1; ++y)
-        for (auto z{0}; z < ez.nz(); ++z) {
-          const double dhy_dhx = hy(x, y, z) - hy(x - 1, y, z);
-          const double dhx_dhy = hx(x, y, z) - hx(x, y - 1, z);
-          const double j = jz(x, y, z);
-          ez(x, y, z) = ceze(x, y, z) * ez(x, y, z) +
-                        0.5 * cezh(x, y, z) * (dhy_dhx - dhx_dhy - j);
+    for (auto x{1}; x < E.z.nx() - 1; ++x)
+      for (auto y{1}; y < E.z.ny() - 1; ++y)
+        for (auto z{0}; z < E.z.nz(); ++z) {
+          const double dhy_dhx = H.y(x, y, z) - H.y(x - 1, y, z);
+          const double dhx_dhy = H.x(x, y, z) - H.x(x, y - 1, z);
+          const double j = J.z(x, y, z);
+          E.z(x, y, z) = E.cze(x, y, z) * E.z(x, y, z) +
+                         0.5 * E.czh(x, y, z) * (dhy_dhx - dhx_dhy - j);
         }
   }
 
   void step_particles() {
-    for (auto &p : particles) p.age++;
+    for (auto &p : particles)
+      p.age++;
   }
 
   void push_particles() {
@@ -201,13 +178,13 @@ template <int N> struct Grid {
 
       double lorentz = 1.0 / std::sqrt(1.0 - vv);
 
-      const double exv = ex.interpolate_at(nx, ny, nz);
-      const double eyv = ey.interpolate_at(nx, ny, nz);
-      const double ezv = ez.interpolate_at(nx, ny, nz);
+      const double exv = E.x.interpolate_at(nx, ny, nz);
+      const double eyv = E.y.interpolate_at(nx, ny, nz);
+      const double ezv = E.z.interpolate_at(nx, ny, nz);
 
-      const double hxv = hx.interpolate_at(nx, ny, nz);
-      const double hyv = hy.interpolate_at(nx, ny, nz);
-      const double hzv = hz.interpolate_at(nx, ny, nz);
+      const double hxv = H.x.interpolate_at(nx, ny, nz);
+      const double hyv = H.y.interpolate_at(nx, ny, nz);
+      const double hzv = H.z.interpolate_at(nx, ny, nz);
 
       const double ux = lorentz * vx;
       const double uy = lorentz * vy;
@@ -259,9 +236,9 @@ template <int N> struct Grid {
   }
 
   void deposit_currents() {
-    std::fill(jx.v.begin(), jx.v.end(), 0);
-    std::fill(jy.v.begin(), jy.v.end(), 0);
-    std::fill(jz.v.begin(), jz.v.end(), 0);
+    std::fill(J.x.v.begin(), J.x.v.end(), 0);
+    std::fill(J.y.v.begin(), J.y.v.end(), 0);
+    std::fill(J.z.v.begin(), J.z.v.end(), 0);
 
     for (const auto &p : particles) {
       const double px = p.px;
@@ -284,9 +261,9 @@ template <int N> struct Grid {
       const int js = std::max(0, std::min(j, pj) - 1);
       const int ks = std::max(0, std::min(k, pk) - 1);
 
-      const int ie = std::min(jx.nx() - 1, std::max(i, pi) + 1);
-      const int je = std::min(jy.ny() - 1, std::max(j, pj) + 1);
-      const int ke = std::min(jz.nz() - 1, std::max(k, pk) + 1);
+      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + 1);
+      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + 1);
+      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + 1);
 
       const double move_co = -p.q / Config::dt;
 
@@ -296,7 +273,7 @@ template <int N> struct Grid {
           for (auto x{is}; x <= ie; ++x) {
             move_sum +=
                 move_co * form_factor_diff<CartesianComponent::x>(p, x, y, z);
-            jx(x, y, z) += move_sum;
+            J.x(x, y, z) += move_sum;
           }
         }
 
@@ -306,7 +283,7 @@ template <int N> struct Grid {
           for (auto y{js}; y <= je; ++y) {
             move_sum +=
                 move_co * form_factor_diff<CartesianComponent::y>(p, x, y, z);
-            jy(x, y, z) += move_sum;
+            J.y(x, y, z) += move_sum;
           }
         }
 
@@ -316,14 +293,13 @@ template <int N> struct Grid {
           for (auto z{ks}; z <= ke; ++z) {
             move_sum +=
                 move_co * form_factor_diff<CartesianComponent::z>(p, x, y, z);
-            jz(x, y, z) += move_sum;
+            J.z(x, y, z) += move_sum;
           }
         }
     }
   }
 
-  template<Component C>
-  void binom_smooth_field(Field<N, C> &field) {
+  template <Component C> void binom_smooth_field(Field<N, C> &field) {
     for (auto y{0}; y < field.ny(); ++y)
       for (auto z{0}; z < field.nz(); ++z) {
         double left = field(0, y, z);
@@ -363,9 +339,9 @@ template <int N> struct Grid {
   }
 
   void smooth_currents() {
-    binom_smooth_field(jx);
-    binom_smooth_field(jy);
-    binom_smooth_field(jz);
+    binom_smooth_field(J.x);
+    binom_smooth_field(J.y);
+    binom_smooth_field(J.z);
   }
 
   void check_currents() {
@@ -392,9 +368,9 @@ template <int N> struct Grid {
       const int js = std::max(0, std::min(j, pj) - 1);
       const int ks = std::max(0, std::min(k, pk) - 1);
 
-      const int ie = std::min(jx.nx() - 1, std::max(i, pi) + 1);
-      const int je = std::min(jy.ny() - 1, std::max(j, pj) + 1);
-      const int ke = std::min(jz.nz() - 1, std::max(k, pk) + 1);
+      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + 1);
+      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + 1);
+      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + 1);
 
       for (auto x{is}; x <= ie; ++x)
         for (auto y{js}; y <= je; ++y)
@@ -409,9 +385,9 @@ template <int N> struct Grid {
             const double clamped_y = std::max(0, y - 1);
             const double clamped_z = std::max(0, z - 1);
 
-            const double div_J = (jx(x, y, z) - jx(clamped_x, y, z)) +
-                                 (jy(x, y, z) - jy(x, clamped_y, z)) +
-                                 (jz(x, y, z) - jz(x, y, clamped_z));
+            const double div_J = (J.x(x, y, z) - J.x(clamped_x, y, z)) +
+                                 (J.y(x, y, z) - J.y(x, clamped_y, z)) +
+                                 (J.z(x, y, z) - J.z(x, y, clamped_z));
 
             // if (std::abs(div_J) > 0.0)
             //   std::cout << "∇∙J_(" << x << "," << y << "," << z << ")=" <<

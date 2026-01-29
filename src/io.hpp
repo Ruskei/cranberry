@@ -43,9 +43,9 @@ template <int N> struct Writer2D {
 
     for (auto y{1}; y < dims[1] - 1; ++y)
       for (auto x{1}; x < dims[0] - 1; ++x) {
-        const double ex = grid.ex(x, y, slice);
-        const double ey = grid.ey(x, y, slice);
-        const double ez = grid.ez(x, y, slice);
+        const double ex = grid.E.x(x, y, slice);
+        const double ey = grid.E.y(x, y, slice);
+        const double ez = grid.E.z(x, y, slice);
         mags.push_back(std::sqrt(ex * ex + ey * ey + ez * ez));
       }
 
@@ -56,9 +56,9 @@ template <int N> struct Writer2D {
       for (auto x{1}; x < dims[0] - 1; ++x) {
         float *pixel = static_cast<float *>(image->GetScalarPointer(x, y, 0));
 
-        double ex = grid.ex(x, y, slice);
-        double ey = grid.ey(x, y, slice);
-        double ez = grid.ez(x, y, slice);
+        double ex = grid.E.x(x, y, slice);
+        double ey = grid.E.y(x, y, slice);
+        double ez = grid.E.z(x, y, slice);
 
         const double m = std::sqrt(ex * ex + ey * ey + ez * ez);
         if (m > cutoff) {

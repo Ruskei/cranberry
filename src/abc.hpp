@@ -36,9 +36,9 @@ template <int N> struct ABC {
 
   void apply(Grid<N> &grid) {
     const double abcco = Config::abcco;
-    auto &ex = grid.ex;
-    auto &ey = grid.ey;
-    auto &ez = grid.ez;
+    auto &ex = grid.E.x;
+    auto &ey = grid.E.y;
+    auto &ez = grid.E.z;
 
     {
       const int x{0};
