@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <utility>
 
@@ -69,7 +70,15 @@ template <int N> struct Grid {
     deposit_charge(this->particles, charge);
     binom_smooth_field(charge);
     std::cout << "Solving potential" << std::endl;
-    solve_potential(charge, potential);
+    auto start = std::chrono::steady_clock::now();
+    // solve_potential(charge, potential);
+    solve_potential_multigrid(charge, potential);
+    auto end = std::chrono::steady_clock::now();
+    auto duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "took " << duration.count() << " ms" << std::endl;
+    std::cout << "max(R)=" << calculate_residuals(charge, potential)
+              << std::endl;
     std::cout << "Applying potential" << std::endl;
     apply_potential();
     std::cout << "Finished Grid initialization" << std::endl;
