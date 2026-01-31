@@ -72,13 +72,14 @@ template <int N> struct Grid {
     std::cout << "Solving potential" << std::endl;
     auto start = std::chrono::steady_clock::now();
     // solve_potential(charge, potential);
-    solve_potential_multigrid(charge, potential);
+    solve_potential_multigrid(charge, potential, 20);
     auto end = std::chrono::steady_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "took " << duration.count() << " ms" << std::endl;
-    std::cout << "max(R)=" << calculate_residuals(charge, potential)
-              << std::endl;
+    const auto r = calculate_residuals(charge, potential);
+    std::cout << "abs L2 = " << r.l2_abs << "  rel L2 = " << r.l2_rel
+              << "  Linf = " << r.linf_abs << "\n";
     std::cout << "Applying potential" << std::endl;
     apply_potential();
     std::cout << "Finished Grid initialization" << std::endl;

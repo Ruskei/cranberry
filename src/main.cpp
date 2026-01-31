@@ -24,7 +24,7 @@ void run_3d() {
 
   ABC<size> abc;
   Grid<size> grid(std::vector<Particle>{
-      Particle{32, 15, 32, 0, 0, 0, 1, 1},
+      Particle{128, 100, 128, 0, 0, 0, 1, 1},
       // Particle{20, 25, 20, 0, 0, 0, -1, 1},
   });
 
