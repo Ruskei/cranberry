@@ -71,8 +71,7 @@ template <int N> struct Grid {
     binom_smooth_field(charge);
     std::cout << "Solving potential" << std::endl;
     auto start = std::chrono::steady_clock::now();
-    // solve_potential(charge, potential);
-    solve_potential_multigrid(charge, potential, 20);
+    solve_potential_pcg(charge, potential);
     auto end = std::chrono::steady_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

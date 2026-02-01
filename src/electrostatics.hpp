@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cmath>
 #include <vector>
+#include <iostream>
 
 template <int N> struct ResidualStats {
   double l2_abs;
@@ -49,22 +50,6 @@ calculate_residuals(const Field<N, Component::Charge> &charge,
   return {l2_abs, l2_rel, linf};
 }
 
-template <int N>
-void solve_potential(const Field<N, Component::Charge> &charge,
-                     Field<N, Component::Potential> &potential) {
-  for (auto i{0}; i < 500; ++i)
-    for (auto x{1}; x < N - 2; ++x)
-      for (auto y{1}; y < N - 2; ++y)
-        for (auto z{1}; z < N - 2; ++z) {
-          potential(x, y, z) =
-              (potential(x - 1, y, z) + potential(x + 1, y, z) +
-               potential(x, y - 1, z) + potential(x, y + 1, z) +
-               potential(x, y, z - 1) + potential(x, y, z + 1) +
-               charge(x, y, z)) /
-              6.0;
-        }
-}
-
 struct RuntimeField {
   std::vector<double> v;
   int sx;
@@ -86,6 +71,37 @@ struct RuntimeField {
       v[i] += other.v[i];
 
     return *this;
+  }
+
+  // this = this + a * other
+  void add_multiplied(double a, const RuntimeField &other) {
+    assert(v.size() == other.v.size());
+    for (size_t i{0}; i < v.size(); ++i)
+      v[i] += a * other.v[i];
+  }
+
+  // this = other + a * this
+  void multiply_add(double a, const RuntimeField &other) {
+    assert(v.size() == other.v.size());
+    for (size_t i{0}; i < v.size(); ++i)
+      v[i] = other.v[i] + v[i] * a;
+  }
+
+  double dot(const RuntimeField &other) const {
+    assert(v.size() == other.v.size());
+    double sum = 0.0;
+    for (size_t i{0}; i < v.size(); ++i)
+      sum += v[i] * other.v[i];
+
+    return sum;
+  }
+
+  double norm2() const {
+    double sum = 0.0;
+    for (size_t i{0}; i < v.size(); ++i)
+      sum += v[i] * v[i];
+
+    return sum;
   }
 
   template <class Field> void write_into(Field &field) const {
@@ -277,11 +293,116 @@ MultigridContext create_multigrid_context(int sx, int sy, int sz,
   return MultigridContext{std::move(levels), smoothing};
 }
 
+void calculate_residual(const RuntimeField &guess, const RuntimeField &target,
+                        RuntimeField &residual) {
+  const int sx = guess.sx, sy = guess.sy, sz = guess.sz;
+  const int yz = sy * sz;
+
+  for (auto x{1}; x < sx - 1; ++x) {
+    const int xb = x * yz;
+    for (auto y{1}; y < sy - 1; ++y) {
+      const int yb = xb + y * sz;
+      for (auto z{1}; z < sz - 1; ++z) {
+        const int i = yb + z;
+        residual.v[i] = target.v[i] -
+                        (6.0 * guess.v[i] -
+                         (guess.v[i - yz] + guess.v[i + yz] + guess.v[i - sz] +
+                          guess.v[i + sz] + guess.v[i - 1] + guess.v[i + 1]));
+      }
+    }
+  }
+}
+
+void update_residual_cg(RuntimeField &residual, double alpha,
+                        const RuntimeField &search) {
+  const int sx = residual.sx, sy = residual.sy, sz = residual.sz;
+  const int yz = sy * sz;
+
+  for (auto x{1}; x < sx - 1; ++x) {
+    const int xb = x * yz;
+    for (auto y{1}; y < sy - 1; ++y) {
+      const int yb = xb + y * sz;
+      for (auto z{1}; z < sz - 1; ++z) {
+        const int i = yb + z;
+        residual.v[i] -=
+            alpha * (6.0 * search.v[i] -
+                     (search.v[i - yz] + search.v[i + yz] + search.v[i - sz] +
+                      search.v[i + sz] + search.v[i - 1] + search.v[i + 1]));
+      }
+    }
+  }
+}
+
+void apply_laplacian(const RuntimeField &guess, RuntimeField &out) {
+  const int sx = guess.sx, sy = guess.sy, sz = guess.sz;
+  const int yz = sy * sz;
+
+  for (auto x{1}; x < sx - 1; ++x) {
+    const int xb = x * yz;
+    for (auto y{1}; y < sy - 1; ++y) {
+      const int yb = xb + y * sz;
+      for (auto z{1}; z < sz - 1; ++z) {
+        const int i = yb + z;
+        out.v[i] = (6.0 * guess.v[i] -
+                    (guess.v[i - yz] + guess.v[i + yz] + guess.v[i - sz] +
+                     guess.v[i + sz] + guess.v[i - 1] + guess.v[i + 1]));
+      }
+    }
+  }
+}
+
 template <int N>
-void solve_potential_multigrid(const Field<N, Component::Charge> &charge,
-                               Field<N, Component::Potential> &potential,
-                               int iterations) {
+void solve_potential_cg(const Field<N, Component::Charge> &charge,
+                        Field<N, Component::Potential> &potential) {
+  const double tol = 1e-11;
+
+  const int sx = charge.nx();
+  const int sy = charge.ny();
+  const int sz = charge.nz();
+
+  const int n = sx * sy * sz;
+
+  RuntimeField target{sx, sy, sz};
+  target.read_from(charge);
+
+  RuntimeField guess{sx, sy, sz};
+  RuntimeField residual{sx, sy, sz};
+  calculate_residual(guess, target, residual);
+
+  RuntimeField search = residual; // copy
+  RuntimeField laplacian_search{sx, sy, sz};
+
+  double residual_norm = residual.norm2();
+
+  for (auto k{0}; k < n; ++k) {
+    apply_laplacian(search, laplacian_search);
+    const double denom = search.dot(laplacian_search);
+    if (std::abs(denom) < tol)
+      break;
+
+    const double alpha = residual_norm / denom;
+    guess.add_multiplied(alpha, search);
+    residual.add_multiplied(-alpha, laplacian_search);
+
+    const double residual_norm_new = residual.norm2();
+    if (std::abs(residual_norm_new) < tol)
+      break;
+
+    const double beta = residual_norm_new / residual_norm;
+    search.multiply_add(beta, residual);
+
+    residual_norm = residual_norm_new;
+  }
+
+  guess.write_into(potential);
+}
+
+template <int N>
+void solve_potential_pcg(const Field<N, Component::Charge> &charge,
+                         Field<N, Component::Potential> &potential) {
+  const double tiny = 1e-30;
   const int smoothing = 3;
+  const double tol = 1e-11;
 
   const int sx = charge.nx();
   const int sy = charge.ny();
@@ -291,10 +412,69 @@ void solve_potential_multigrid(const Field<N, Component::Charge> &charge,
   assert(sy % 2 == 0);
   assert(sz % 2 == 0);
 
+  const int n = sx * sy * sz;
+
+  RuntimeField target{sx, sy, sz};
+  target.read_from(charge);
+
+  RuntimeField guess{sx, sy, sz};
+  RuntimeField residual{sx, sy, sz};
+
+  calculate_residual(guess, target, residual);
+
+  double target_norm2 = target.norm2();
+  if (target_norm2 == 0.0)
+    target_norm2 = 1.0;
+
+  double residual_norm2 = residual.norm2();
+  if (residual_norm2 <= (tol * tol) * target_norm2)
+    return;
+
+  RuntimeField conditioned{sx, sy, sz};
+
   MultigridContext context = create_multigrid_context(sx, sy, sz, smoothing);
+
   Level &first_level = context.levels[0];
-  first_level.target.read_from(charge);
-  for (auto i{0}; i < iterations; ++i)
+  first_level.target = residual;
+  solve_multigrid(context, 0);
+  conditioned = first_level.guess;
+
+  RuntimeField search{sx, sy, sz};
+  RuntimeField laplacian_search{sx, sy, sz};
+  search = conditioned;
+
+  double rz_old = residual.dot(conditioned);
+
+  int iterations = 0;
+  for (auto k{0}; k < n; ++k) {
+    iterations++;
+    apply_laplacian(search, laplacian_search);
+    const double denom = search.dot(laplacian_search);
+    if (std::abs(denom) < tiny)
+      break;
+
+    const double alpha = rz_old / denom;
+
+    guess.add_multiplied(alpha, search);
+    residual.add_multiplied(-alpha, laplacian_search);
+
+    if (residual.norm2() <= (tol * tol) * target_norm2)
+      break;
+
+    std::fill(first_level.guess.v.begin(), first_level.guess.v.end(), 0.0);
+    first_level.target = residual;
     solve_multigrid(context, 0);
-  first_level.guess.write_into(potential);
+    conditioned = first_level.guess;
+
+    const double rz_new = residual.dot(conditioned);
+
+    if (std::abs(rz_old) < tiny) break;
+    const double beta = rz_new / rz_old;
+    search.multiply_add(beta, conditioned);
+
+    rz_old = rz_new;
+  }
+
+  guess.write_into(potential);
+  std::cout << "took " << iterations << " iterations!" << std::endl;
 }
