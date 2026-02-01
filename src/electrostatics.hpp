@@ -120,52 +120,6 @@ void update_residual_cg(RuntimeField &residual, double alpha,
 void apply_laplacian(const RuntimeField &guess, RuntimeField &out);
 
 template <int N>
-void solve_potential_cg(const Field<N, Component::Charge> &charge,
-                        Field<N, Component::Potential> &potential) {
-  const double tol = 1e-11;
-
-  const int sx = charge.nx();
-  const int sy = charge.ny();
-  const int sz = charge.nz();
-
-  const int n = sx * sy * sz;
-
-  RuntimeField target{sx, sy, sz};
-  target.read_from(charge);
-
-  RuntimeField guess{sx, sy, sz};
-  RuntimeField residual{sx, sy, sz};
-  calculate_residual(guess, target, residual);
-
-  RuntimeField search = residual; // copy
-  RuntimeField laplacian_search{sx, sy, sz};
-
-  double residual_norm = residual.norm2();
-
-  for (auto k{0}; k < n; ++k) {
-    apply_laplacian(search, laplacian_search);
-    const double denom = search.dot(laplacian_search);
-    if (std::abs(denom) < tol)
-      break;
-
-    const double alpha = residual_norm / denom;
-    guess.add_multiplied(alpha, search);
-    residual.add_multiplied(-alpha, laplacian_search);
-
-    const double residual_norm_new = residual.norm2();
-    if (std::abs(residual_norm_new) < tol)
-      break;
-
-    const double beta = residual_norm_new / residual_norm;
-    search.multiply_add(beta, residual);
-
-    residual_norm = residual_norm_new;
-  }
-
-  guess.write_into(potential);
-}
-
-template <int N>
 void solve_potential_pcg(const Field<N, Component::Charge> &charge,
                          Field<N, Component::Potential> &potential) {
   const double tiny = 1e-30;
