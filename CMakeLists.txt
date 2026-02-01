@@ -19,9 +19,9 @@ if (NOT VTK_FOUND)
 endif()
 
 add_executable(cranberry
-	src/main.cpp
-	src/particles.cpp
 	src/electrostatics.cpp
+	src/particles.cpp
+	src/main.cpp
 )
 
 target_include_directories(cranberry

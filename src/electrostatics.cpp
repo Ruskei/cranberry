@@ -1,54 +1,8 @@
 #include <assert.h>
 #include <vector>
 
+#include "runtime_field.hpp"
 #include "electrostatics.hpp"
-
-RuntimeField::RuntimeField(int sx, int sy, int sz)
-    : v{std::vector<double>(sx * sy * sz)}, sx{sx}, sy{sy}, sz{sz} {}
-
-double &RuntimeField::operator()(int x, int y, int z) {
-  return v[x * sy * sz + y * sz + z];
-}
-const double &RuntimeField::operator()(int x, int y, int z) const {
-  return v[x * sy * sz + y * sz + z];
-}
-
-RuntimeField &RuntimeField::operator+=(const RuntimeField &other) {
-  assert(sx == other.sx && sy == other.sy && sz == other.sz);
-  for (size_t i{0}; i < v.size(); ++i)
-    v[i] += other.v[i];
-
-  return *this;
-}
-
-void RuntimeField::add_multiplied(double a, const RuntimeField &other) {
-  assert(v.size() == other.v.size());
-  for (size_t i{0}; i < v.size(); ++i)
-    v[i] += a * other.v[i];
-}
-
-void RuntimeField::multiply_add(double a, const RuntimeField &other) {
-  assert(v.size() == other.v.size());
-  for (size_t i{0}; i < v.size(); ++i)
-    v[i] = other.v[i] + v[i] * a;
-}
-
-double RuntimeField::dot(const RuntimeField &other) const {
-  assert(v.size() == other.v.size());
-  double sum = 0.0;
-  for (size_t i{0}; i < v.size(); ++i)
-    sum += v[i] * other.v[i];
-
-  return sum;
-}
-
-double RuntimeField::norm2() const {
-  double sum = 0.0;
-  for (size_t i{0}; i < v.size(); ++i)
-    sum += v[i] * v[i];
-
-  return sum;
-}
 
 void smooth_weighted_jacobi(RuntimeField &guess, const RuntimeField &target,
                             double scale_factor, double omega) {

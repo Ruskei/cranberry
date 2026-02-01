@@ -1,11 +1,13 @@
 #pragma once
 
-#include "fdtd_types.hpp"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <iostream>
 #include <vector>
+
+#include "runtime_field.hpp"
+#include "fdtd_types.hpp"
 
 template <int N> struct ResidualStats {
   double l2_abs;
@@ -49,40 +51,6 @@ calculate_residuals(const Field<N, Component::Charge> &charge,
 
   return {l2_abs, l2_rel, linf};
 }
-
-struct RuntimeField {
-  std::vector<double> v;
-  int sx;
-  int sy;
-  int sz;
-  RuntimeField(int sx, int sy, int sz);
-
-  double &operator()(int x, int y, int z);
-  const double &operator()(int x, int y, int z) const;
-  RuntimeField &operator+=(const RuntimeField &other);
-  // this = this + a * other
-  void add_multiplied(double a, const RuntimeField &other);
-  // this = other + a * this
-  void multiply_add(double a, const RuntimeField &other);
-  double dot(const RuntimeField &other) const;
-  double norm2() const;
-
-  template <class Field> void write_into(Field &field) const {
-    assert(sx == field.nx());
-    assert(sy == field.ny());
-    assert(sz == field.nz());
-    for (size_t i{0}; i < v.size(); ++i)
-      field.v[i] = v[i];
-  }
-
-  template <class Field> void read_from(const Field &field) {
-    assert(sx == field.nx());
-    assert(sy == field.ny());
-    assert(sz == field.nz());
-    for (size_t i{0}; i < v.size(); ++i)
-      v[i] = field.v[i];
-  }
-};
 
 struct Level {
   RuntimeField guess, target, residual;
