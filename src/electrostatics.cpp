@@ -1,39 +1,9 @@
 #include <assert.h>
 #include <vector>
 
+#include "parallel_jacobi.hpp"
 #include "runtime_field.hpp"
 #include "electrostatics.hpp"
-
-void smooth_weighted_jacobi(RuntimeField &guess, const RuntimeField &target,
-                            double scale_factor, double omega) {
-  assert(guess.sx == target.sx && guess.sy == target.sy &&
-         guess.sz == target.sz);
-  const int sx = guess.sx, sy = guess.sy, sz = guess.sz;
-  const int yz = sy * sz;
-  const double h2 = scale_factor * scale_factor;
-
-  RuntimeField new_guess{sx, sy, sz};
-
-  for (auto x{1}; x < sx - 1; ++x) {
-    const int xb = x * yz;
-    for (auto y{1}; y < sy - 1; ++y) {
-      const int yb = xb + y * sz;
-      for (auto z{1}; z < sz - 1; ++z) {
-        const int i = yb + z;
-
-        const double jacobi =
-            (guess.v[i - yz] + guess.v[i + yz] + guess.v[i - sz] +
-             guess.v[i + sz] + guess.v[i - 1] + guess.v[i + 1] +
-             h2 * target.v[i]) /
-            6.0;
-
-        new_guess.v[i] = (1.0 - omega) * guess.v[i] + omega * jacobi;
-      }
-    }
-  }
-
-  guess.v.swap(new_guess.v);
-}
 
 void calculate_residual(const RuntimeField &guess, const RuntimeField &target,
                         RuntimeField &residual, double scale_factor) {
@@ -124,13 +94,13 @@ void solve_multigrid(MultigridContext &context, size_t level_idx) {
   Level &level = context.levels[level_idx];
   if (level_idx == context.levels.size() - 1) {
     for (auto i{0}; i < 50; ++i)
-      smooth_weighted_jacobi(level.guess, level.target, level.scale_factor);
+      context.parallel_jacobi.smooth(level.guess, level.target, level.jacobi, level.scale_factor);
 
     return;
   }
 
   for (auto i{0}; i < context.smoothing; ++i)
-    smooth_weighted_jacobi(level.guess, level.target, level.scale_factor);
+    context.parallel_jacobi.smooth(level.guess, level.target, level.jacobi, level.scale_factor);
 
   Level &next_level = context.levels[level_idx + 1];
   std::fill(next_level.guess.v.begin(), next_level.guess.v.end(), 0);
@@ -143,7 +113,7 @@ void solve_multigrid(MultigridContext &context, size_t level_idx) {
   level.guess += level.residual;
 
   for (auto i{0}; i < context.smoothing; ++i)
-    smooth_weighted_jacobi(level.guess, level.target, level.scale_factor);
+    context.parallel_jacobi.smooth(level.guess, level.target, level.jacobi, level.scale_factor);
 }
 
 MultigridContext create_multigrid_context(int sx, int sy, int sz,
@@ -155,6 +125,7 @@ MultigridContext create_multigrid_context(int sx, int sy, int sz,
         RuntimeField{sx, sy, sz},
         RuntimeField{sx, sy, sz},
         RuntimeField{sx, sy, sz},
+        RuntimeField{sx, sy, sz},
         scale_factor,
     });
     sx /= 2;
@@ -163,7 +134,7 @@ MultigridContext create_multigrid_context(int sx, int sy, int sz,
     scale_factor *= 2.0;
   }
 
-  return MultigridContext{std::move(levels), smoothing};
+  return MultigridContext{std::move(levels), smoothing, MultigridJacobi{5}};
 }
 
 void calculate_residual(const RuntimeField &guess, const RuntimeField &target,

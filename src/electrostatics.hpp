@@ -8,6 +8,8 @@
 
 #include "runtime_field.hpp"
 #include "fdtd_types.hpp"
+#include "parallel_jacobi.hpp"
+#include "level.hpp"
 
 template <int N> struct ResidualStats {
   double l2_abs;
@@ -52,18 +54,11 @@ calculate_residuals(const Field<N, Component::Charge> &charge,
   return {l2_abs, l2_rel, linf};
 }
 
-struct Level {
-  RuntimeField guess, target, residual;
-  const double scale_factor;
-};
-
 struct MultigridContext {
   std::vector<Level> levels;
   const int smoothing{1};
+  MultigridJacobi parallel_jacobi;
 };
-
-void smooth_weighted_jacobi(RuntimeField &guess, const RuntimeField &target,
-                            double scale_factor, double omega = 2.0 / 3.0);
 
 void calculate_residual(const RuntimeField &guess, const RuntimeField &target,
                         RuntimeField &residual, double scale_factor);
