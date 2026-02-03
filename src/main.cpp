@@ -1,5 +1,7 @@
+#include <chrono>
 #include <iostream>
 #include <ostream>
+#include <ratio>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -24,8 +26,8 @@ void run_3d() {
 
   ABC<size> abc;
   Grid<size> grid(std::vector<Particle>{
-      Particle{128, 100, 128, 0, 0, 0, 1, 1},
-      Particle{128, 120, 128, 0, 0, 0, -1, 1},
+      Particle{128, 50, 128, 0, 0.5, 0, 1, 1},
+      // Particle{128, 120, 128, 0, 0, 0, -1, 1},
   });
 
   const Writer2D<size> writer("2d_animation", (size - 1) / 2);
@@ -52,7 +54,7 @@ void run_3d() {
     grid.step_particles();
     grid.push_particles();
     grid.deposit_currents();
-    grid.check_currents();
+    // grid.check_currents();
     grid.smooth_currents();
 
     particle_writer.write_particles(grid.particles, time);
@@ -61,7 +63,7 @@ void run_3d() {
     grid.half_update_e();
     abc.apply(grid);
 
-    grid.check_gauss();
+    // grid.check_gauss();
 
     // if (time > 30.0) {
     // double tau = time - Config::t0;

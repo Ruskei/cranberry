@@ -193,7 +193,7 @@ struct MultigridJacobi {
     const int active = std::min(x_range, static_cast<int>(max_threads));
 
     const int block =
-        (x_range + static_cast<int>(active) - 1) / static_cast<int>(active);
+        (x_range + active - 1) / active;
 
     {
       std::lock_guard<std::mutex> lock(m);
