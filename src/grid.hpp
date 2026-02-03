@@ -34,13 +34,13 @@ template <int N> struct Grid {
       const int j = static_cast<int>(std::floor(py));
       const int k = static_cast<int>(std::floor(pz));
 
-      const int is = std::max(0, i - 2);
-      const int js = std::max(0, j - 2);
-      const int ks = std::max(0, k - 2);
+      const int is = std::max(0, i - particle_radius);
+      const int js = std::max(0, j - particle_radius);
+      const int ks = std::max(0, k - particle_radius);
 
-      const int ie = std::min(charge.nx() - 1, i + 2);
-      const int je = std::min(charge.ny() - 1, j + 2);
-      const int ke = std::min(charge.nz() - 1, k + 2);
+      const int ie = std::min(charge.nx() - 1, i + 1 + particle_radius);
+      const int je = std::min(charge.ny() - 1, j + 1 + particle_radius);
+      const int ke = std::min(charge.nz() - 1, k + 1 + particle_radius);
 
       for (auto x{is}; x <= ie; ++x)
         for (auto y{js}; y <= je; ++y)
@@ -216,13 +216,13 @@ template <int N> struct Grid {
       const int pj = static_cast<int>(std::floor(ppy));
       const int pk = static_cast<int>(std::floor(ppz));
 
-      const int is = std::max(0, std::min(i, pi) - 2);
-      const int js = std::max(0, std::min(j, pj) - 2);
-      const int ks = std::max(0, std::min(k, pk) - 2);
+      const int is = std::max(0, std::min(i, pi) - particle_radius);
+      const int js = std::max(0, std::min(j, pj) - particle_radius);
+      const int ks = std::max(0, std::min(k, pk) - particle_radius);
 
-      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + 2);
-      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + 2);
-      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + 2);
+      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + 1 + particle_radius);
+      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + 1 + particle_radius);
+      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + 1 + particle_radius);
 
       const double move_co = -p.q / Config::dt;
 
@@ -323,13 +323,13 @@ template <int N> struct Grid {
       const int pj = static_cast<int>(std::floor(ppy));
       const int pk = static_cast<int>(std::floor(ppz));
 
-      const int is = std::max(0, std::min(i, pi) - 2);
-      const int js = std::max(0, std::min(j, pj) - 2);
-      const int ks = std::max(0, std::min(k, pk) - 2);
+      const int is = std::max(0, std::min(i, pi) - particle_radius);
+      const int js = std::max(0, std::min(j, pj) - particle_radius);
+      const int ks = std::max(0, std::min(k, pk) - particle_radius);
 
-      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + 2);
-      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + 2);
-      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + 2);
+      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + 1 + particle_radius);
+      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + 1 + particle_radius);
+      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + 1 + particle_radius);
 
       for (auto x{is}; x <= ie; ++x)
         for (auto y{js}; y <= je; ++y)

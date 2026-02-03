@@ -4,6 +4,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+namespace {
+  inline constexpr int particle_radius{1};
+}
+
 struct Particle {
   double px;
   double py;

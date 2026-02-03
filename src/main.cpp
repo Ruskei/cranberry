@@ -54,16 +54,16 @@ void run_3d() {
     grid.step_particles();
     grid.push_particles();
     grid.deposit_currents();
-    // grid.check_currents();
+    grid.check_currents();
     grid.smooth_currents();
 
-    particle_writer.write_particles(grid.particles, time);
+    // particle_writer.write_particles(grid.particles, time);
 
     grid.half_update_h();
     grid.half_update_e();
     abc.apply(grid);
 
-    // grid.check_gauss();
+    grid.check_gauss();
 
     // if (time > 30.0) {
     // double tau = time - Config::t0;
