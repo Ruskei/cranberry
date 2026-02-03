@@ -26,8 +26,8 @@ void run_3d() {
 
   ABC<size> abc;
   Grid<size> grid(std::vector<Particle>{
-      Particle{128, 50, 128, 0, 0.5, 0, 1, 1},
-      // Particle{128, 120, 128, 0, 0, 0, -1, 1},
+      Particle{64, 50, 64, 0, 0.5, 0, 1, 1},
+      Particle{64, 70, 64, 0, -0.5, 0, -1, 1},
   });
 
   const Writer2D<size> writer("2d_animation", (size - 1) / 2);

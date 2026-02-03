@@ -5,7 +5,7 @@
 #include <sys/types.h>
 
 namespace {
-  inline constexpr int particle_radius{1};
+  inline constexpr int particle_radius{2};
 }
 
 struct Particle {

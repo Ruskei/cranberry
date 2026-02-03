@@ -53,16 +53,31 @@ void ParticleWriter::write_all(double max_time, double dt) {
   output.close();
 }
 
+// TSC
+// double form_factor(double px, double nx) {
+//   const double r = std::abs(px - nx);
+//
+//   if (r < 0.5)
+//     return 0.75 - r * r;
+//   else if (r < 1.5) {
+//     const double t = 1.5 - r;
+//     return 0.5 * t * t;
+//   } else
+//     return 0.0;
+// }
+
+// PCS
 double form_factor(double px, double nx) {
   const double r = std::abs(px - nx);
 
-  if (r < 0.5)
-    return 0.75 - r * r;
-  else if (r < 1.5) {
-    const double t = 1.5 - r;
-    return 0.5 * t * t;
-  } else
+  if (r < 1.0) {
+    return (2.0 / 3.0) + r * r * (0.5 * r - 1.0);
+  } else if (r < 2.0) {
+    const double t = 2.0 - r;
+    return (1.0 / 6.0) * t * t * t;
+  } else {
     return 0.0;
+  }
 }
 
 double form_factor_diff_helper(double s_o_x, double s_o_y, double s_o_z,
