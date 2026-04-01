@@ -5,13 +5,22 @@
 #include <iostream>
 #include <utility>
 
+#include "print_result.hpp"
+#include "field_view_2d_result.hpp"
+#include "abc.hpp"
 #include "config.hpp"
 #include "electrostatics.hpp"
 #include "fdtd_types.hpp"
 #include "particles.hpp"
 #include "parallel_fdtd.hpp"
 
-template <int N> struct Grid {
+template<class... Ts>
+struct overloads : Ts... { using Ts::operator()...; };
+
+template <int N>
+using SimulationResult = std::variant<PrintResult, FieldView2D<N>>;
+
+template <int N> struct Sim {
   EField<N> E;
   JField<N> J;
   HField<N> H;
@@ -20,8 +29,11 @@ template <int N> struct Grid {
   Field<N, Component::Potential> potential;
 
   std::vector<Particle> particles;
+  ParallelFDTD<N> parallel_fdtd{8};
+  ABC<Config::size> boundary;
+  double time{0.0};
 
-  ParallelFDTD<N> parallel_fdtd{4};
+  std::vector<SimulationResult<N>> results;
 
   void deposit_charge(const std::vector<Particle> &particles,
                       Field<N, Component::Charge> &charge) {
@@ -68,7 +80,7 @@ template <int N> struct Grid {
           E.z(x, y, z) = potential(x, y, z + 1) - potential(x, y, z);
   }
 
-  Grid(std::vector<Particle> particles) : particles{std::move(particles)} {
+  Sim(std::vector<Particle> particles, std::vector<SimulationResult<N>> results) : particles{std::move(particles)}, results{std::move(results)} {
     std::cout << "Depositing charge..." << std::endl;
     deposit_charge(this->particles, charge);
     binom_smooth_field(charge);
@@ -84,7 +96,7 @@ template <int N> struct Grid {
               << "  Linf = " << r.linf_abs << "\n";
     std::cout << "Applying potential" << std::endl;
     apply_potential();
-    std::cout << "Finished Grid initialization" << std::endl;
+    std::cout << "Finished grid initialization" << std::endl;
   }
 
   void setup_coefficients() {
@@ -386,5 +398,43 @@ template <int N> struct Grid {
     if (std::abs(residual) > 1e-9)
       std::cout << "Σ∇∙E=" << total_div_E << ", Σρ=" << total_charge
                 << std::endl;
+  }
+
+  /*
+   * half-update E^(n    ) -> E^(n+1/2) with H^(n    )
+   * half-update H^(n    ) -> H^(n+1/2) with E^(n+1/2)
+   * PIC
+   * half-update H^(n+1/2) -> H^(n+1  ) with E^(n+1/2)
+   * half-update E^(n+1/2) -> E^(n    ) with H^(n+1/2)
+   */
+  void step() {
+    half_update_e();
+    half_update_h();
+    boundary.apply(E);
+
+    step_particles();
+    push_particles();
+    deposit_currents();
+    smooth_currents();
+
+    half_update_h();
+    half_update_e();
+    boundary.apply(E);
+
+    time += Config::dt;
+
+    const auto result_handler = overloads{
+      [&](PrintResult &result){ result.step(time); },
+      [&](FieldView2D<N> &result){ result.step(time, E, J, H); }
+    };
+    for (auto &result : results) std::visit(result_handler, result);
+  }
+
+  void finish() {
+    const auto result_handler = overloads{
+      [&](PrintResult){},
+      [&](FieldView2D<N> &result){ result.finish(); }
+    };
+    for (auto &result : results) std::visit(result_handler, result);
   }
 };

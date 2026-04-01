@@ -2,7 +2,8 @@
 
 #include <vector>
 
-#include "grid.hpp"
+#include "config.hpp"
+#include "fdtd_types.hpp"
 
 template <int N> struct ABC {
   static constexpr int size = (N - 1) * N;
@@ -34,11 +35,11 @@ template <int N> struct ABC {
   WallA exz1;
   WallB eyz1;
 
-  void apply(Grid<N> &grid) {
+  void apply(EField<N> &E) {
     const double abcco = Config::abcco;
-    auto &ex = grid.E.x;
-    auto &ey = grid.E.y;
-    auto &ez = grid.E.z;
+    auto &ex = E.x;
+    auto &ey = E.y;
+    auto &ez = E.z;
 
     {
       const int x{0};

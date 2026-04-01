@@ -37,7 +37,7 @@ template <int N> struct Writer2D {
     mkdir(("out/" + name).c_str(), 0755);
   }
 
-  void write_timestep(Grid<N> &grid, double time) const {
+  void write_timestep(Sim<N> &grid, double time) const {
     std::vector<double> mags;
     mags.reserve((dims[1] - 2) * (dims[0] - 2));
 
@@ -130,7 +130,7 @@ template <int N> struct Writer3D {
     mkdir("out/3d_animation", 0755);
   }
 
-  void write_timestep(Grid<N> &grid, double time) const {
+  void write_timestep(Sim<N> &grid, double time) const {
     std::vector<double> mags;
     mags.reserve((dims[2] - 2) * (dims[1] - 2) * (dims[0] - 2));
 

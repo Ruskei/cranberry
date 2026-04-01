@@ -1,6 +1,7 @@
-#pragma once
-
 #include <iostream>
+
+#include "print_result.hpp"
+#include "config.hpp"
 
 inline void print_progress(double frac, int width) {
   const int filled = static_cast<int>(frac * width);
@@ -16,6 +17,10 @@ inline void print_progress(double frac, int width) {
 inline void print_sim_finished() {
   std::cout << "\r\x1b[2K";
   std::cout << std::flush;
-  std::cout << "Finished 3D simulation!" << std::endl;
+  std::cout << "Finished simulation!" << std::endl;
+}
 
+void PrintResult::step(double time) {
+  if (static_cast<int>(time / Config::dt) % Config::print_interval == 0)
+    print_progress(time / Config::max_time, 20);
 }

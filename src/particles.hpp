@@ -3,6 +3,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <vector>
 
 namespace {
   inline constexpr int particle_radius{2};

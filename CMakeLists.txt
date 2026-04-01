@@ -22,6 +22,7 @@ add_executable(cranberry
 	src/electrostatics.cpp
 	src/particles.cpp
 	src/main.cpp
+	src/print_result.cpp
 )
 
 target_include_directories(cranberry
