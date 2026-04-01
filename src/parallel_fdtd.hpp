@@ -254,17 +254,17 @@ template <int N> struct ParallelFDTD {
 
       for (int thread_id{}; thread_id < active; ++thread_id) {
         const int local_x_x0 = x_x_min + thread_id * x_block;
-        const int local_x_x1 = std::min(x_x_range, local_x_x0 + x_block);
+        const int local_x_x1 = std::min(x_x_max, local_x_x0 + x_block);
         workers[thread_id].x_x0 = local_x_x0;
         workers[thread_id].x_x1 = local_x_x1;
 
         const int local_y_x0 = y_x_min + thread_id * y_block;
-        const int local_y_x1 = std::min(y_x_range, local_y_x0 + y_block);
+        const int local_y_x1 = std::min(y_x_max, local_y_x0 + y_block);
         workers[thread_id].y_x0 = local_y_x0;
         workers[thread_id].y_x1 = local_y_x1;
 
         const int local_z_x0 = z_x_min + thread_id * z_block;
-        const int local_z_x1 = std::min(z_x_range, local_z_x0 + z_block);
+        const int local_z_x1 = std::min(z_x_max, local_z_x0 + z_block);
         workers[thread_id].z_x0 = local_z_x0;
         workers[thread_id].z_x1 = local_z_x1;
       }
