@@ -14,11 +14,14 @@
 #include "config.hpp"
 #include "grid.hpp"
 #include "particles.hpp"
+#include "physical_converter.hpp"
 #include "print_result.hpp"
 #include "field_view_2d_result.hpp"
 
 void run_3d() {
   std::cout << "Running 3D FDTD sim!!" << std::endl;
+
+  const PhysicalConverter converter{1e-6};
 
   constexpr int nx = Config::nx;
   constexpr int ny = Config::ny;
@@ -37,7 +40,7 @@ void run_3d() {
 
   Sim<nx, ny, nz> grid(
     std::vector<Particle>{
-      Particle{particle_x, particle_y, particle_z, 0, 0.5, 0, 1, 1},
+      Particle{particle_x, particle_y, particle_z, 0, converter.to_sim_velocity(light_speed * 0.5), 0, 1, 1},
       // Particle{particle_x, particle_y * 4.0 + 6.0, particle_z, 0, -0.5, 0,
       //          -1, 1},
     },

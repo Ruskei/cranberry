@@ -23,6 +23,7 @@ add_executable(cranberry
 	src/particles.cpp
 	src/main.cpp
 	src/print_result.cpp
+	src/physical_converter.cpp
 )
 
 target_include_directories(cranberry
