@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <utility>
+#include <variant>
 
 #include "print_result.hpp"
 #include "field_view_2d_result.hpp"
@@ -17,26 +19,27 @@
 template<class... Ts>
 struct overloads : Ts... { using Ts::operator()...; };
 
-template <int N>
-using SimulationResult = std::variant<PrintResult, FieldView2D<N>>;
+template <int NX, int NY, int NZ>
+using SimulationResult = std::variant<PrintResult, FieldView2D<NX, NY, NZ>>;
 
-template <int N> struct Sim {
-  EField<N> E;
-  JField<N> J;
-  HField<N> H;
+template <int NX, int NY, int NZ> struct Sim {
+  using Shape = GridShape<NX, NY, NZ>;
+  EField<NX, NY, NZ> E;
+  JField<NX, NY, NZ> J;
+  HField<NX, NY, NZ> H;
 
-  Field<N, Component::Charge> charge;
-  Field<N, Component::Potential> potential;
+  Field<NX, NY, NZ, Component::Charge> charge;
+  Field<NX, NY, NZ, Component::Potential> potential;
 
   std::vector<Particle> particles;
-  ParallelFDTD<N> parallel_fdtd{8};
-  ABC<Config::size> boundary;
+  ParallelFDTD<NX, NY, NZ> parallel_fdtd{8};
+  ABC<NX, NY, NZ> boundary;
   double time{0.0};
 
-  std::vector<SimulationResult<N>> results;
+  std::vector<SimulationResult<NX, NY, NZ>> results;
 
   void deposit_charge(const std::vector<Particle> &particles,
-                      Field<N, Component::Charge> &charge) {
+                      Field<NX, NY, NZ, Component::Charge> &charge) {
     for (const auto &p : particles) {
       const double px = p.px;
       const double py = p.py;
@@ -80,7 +83,9 @@ template <int N> struct Sim {
           E.z(x, y, z) = potential(x, y, z + 1) - potential(x, y, z);
   }
 
-  Sim(std::vector<Particle> particles, std::vector<SimulationResult<N>> results) : particles{std::move(particles)}, results{std::move(results)} {
+  Sim(std::vector<Particle> particles,
+      std::vector<SimulationResult<NX, NY, NZ>> results)
+      : particles{std::move(particles)}, results{std::move(results)} {
     std::cout << "Depositing charge..." << std::endl;
     deposit_charge(this->particles, charge);
     binom_smooth_field(charge);
@@ -270,7 +275,8 @@ template <int N> struct Sim {
     }
   }
 
-  template <Component C> void binom_smooth_field(Field<N, C> &field) {
+  template <Component C>
+  void binom_smooth_field(Field<NX, NY, NZ, C> &field) {
     for (auto y{0}; y < field.ny(); ++y)
       for (auto z{0}; z < field.nz(); ++z) {
         double left = field(0, y, z);
@@ -316,7 +322,7 @@ template <int N> struct Sim {
   }
 
   void check_currents() {
-    Field<N, Component::Charge> charge_diff;
+    Field<NX, NY, NZ, Component::Charge> charge_diff;
 
     for (const auto &p : particles) {
       const double px = p.px;
@@ -425,7 +431,7 @@ template <int N> struct Sim {
 
     const auto result_handler = overloads{
       [&](PrintResult &result){ result.step(time); },
-      [&](FieldView2D<N> &result){ result.step(time, E, J, H); }
+      [&](FieldView2D<NX, NY, NZ> &result){ result.step(time, E, J, H); }
     };
     for (auto &result : results) std::visit(result_handler, result);
   }
@@ -433,7 +439,7 @@ template <int N> struct Sim {
   void finish() {
     const auto result_handler = overloads{
       [&](PrintResult){},
-      [&](FieldView2D<N> &result){ result.finish(); }
+      [&](FieldView2D<NX, NY, NZ> &result){ result.finish(); }
     };
     for (auto &result : results) std::visit(result_handler, result);
   }

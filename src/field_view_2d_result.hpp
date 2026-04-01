@@ -1,6 +1,13 @@
 #pragma once
 
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <fstream>
 #include <string>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <utility>
 
 #include <vtkImageData.h>
 #include <vtkImageMagnitude.h>
@@ -17,7 +24,8 @@
 enum Axis { X, Y, Z };
 enum WhichField { E, J, H };
 
-template <int N> struct FieldView2D {
+template <int NX, int NY, int NZ> struct FieldView2D {
+  using Shape = GridShape<NX, NY, NZ>;
   std::string name;
   WhichField field;
   Axis axis;
@@ -29,10 +37,61 @@ template <int N> struct FieldView2D {
   int *dims;
   int num_saved{};
 
+  static constexpr int plane_width(Axis axis) {
+    switch (axis) {
+    case Axis::X:
+      return NY - 1;
+    case Axis::Y:
+      return NX - 1;
+    case Axis::Z:
+      return NX - 1;
+    }
+
+    return 0;
+  }
+
+  static constexpr int plane_height(Axis axis) {
+    switch (axis) {
+    case Axis::X:
+      return NZ - 1;
+    case Axis::Y:
+      return NZ - 1;
+    case Axis::Z:
+      return NY - 1;
+    }
+
+    return 0;
+  }
+
+  static constexpr int slice_extent(Axis axis) {
+    switch (axis) {
+    case Axis::X:
+      return NX - 1;
+    case Axis::Y:
+      return NY - 1;
+    case Axis::Z:
+      return NZ - 1;
+    }
+
+    return 0;
+  }
+
+  template <class VectorField>
+  std::array<double, 3> sample(const VectorField &field, int a, int b) const {
+    if (axis == Axis::X)
+      return {field.x(slice, a, b), field.y(slice, a, b), field.z(slice, a, b)};
+    if (axis == Axis::Y)
+      return {field.x(a, slice, b), field.y(a, slice, b), field.z(a, slice, b)};
+
+    return {field.x(a, b, slice), field.y(a, b, slice), field.z(a, b, slice)};
+  }
+
   FieldView2D(std::string name, WhichField field, Axis axis, int slice,
               int interval)
-      : name{name}, field{field}, axis{axis}, slice{slice}, interval{interval} {
-    image->SetDimensions(N, N, 1);
+      : name{std::move(name)}, field{field}, axis{axis}, interval{interval} {
+    this->slice = std::clamp(slice, 0, slice_extent(axis) - 1);
+
+    image->SetDimensions(plane_width(axis), plane_height(axis), 1);
     image->AllocateScalars(VTK_FLOAT, 3);
 
     dims = image->GetDimensions();
@@ -51,7 +110,8 @@ template <int N> struct FieldView2D {
     mkdir(("out/" + name + "/field").c_str(), 0755);
   }
 
-  void step(double time, EField<N> &E, JField<N> &J, HField<N> &H) {
+  void step(double time, const EField<NX, NY, NZ> &E,
+            const JField<NX, NY, NZ> &J, const HField<NX, NY, NZ> &H) {
     if (static_cast<int>(std::round(time / Config::dt)) % interval != 0) return;
 
     std::vector<double> mags;
@@ -59,50 +119,13 @@ template <int N> struct FieldView2D {
 
     for (auto y{1}; y < dims[1] - 1; ++y)
       for (auto x{1}; x < dims[0] - 1; ++x) {
-        double vx, vy, vz;
-        if (field == WhichField::E) {
-          if (axis == Axis::X) {
-            vx = E.x(slice, x, y);
-            vy = E.y(slice, x, y);
-            vz = E.z(slice, x, y);
-          } else if (axis == Axis::Y) {
-            vx = E.x(x, slice, y);
-            vy = E.y(x, slice, y);
-            vz = E.z(x, slice, y);
-          } else {
-            vx = E.x(x, y, slice);
-            vy = E.y(x, y, slice);
-            vz = E.z(x, y, slice);
-          }
-        } else if (field == WhichField::J) {
-          if (axis == Axis::X) {
-            vx = J.x(slice, x, y);
-            vy = J.y(slice, x, y);
-            vz = J.z(slice, x, y);
-          } else if (axis == Axis::Y) {
-            vx = J.x(x, slice, y);
-            vy = J.y(x, slice, y);
-            vz = J.z(x, slice, y);
-          } else {
-            vx = J.x(x, y, slice);
-            vy = J.y(x, y, slice);
-            vz = J.z(x, y, slice);
-          }
-        } else {
-          if (axis == Axis::X) {
-            vx = H.x(slice, x, y);
-            vy = H.y(slice, x, y);
-            vz = H.z(slice, x, y);
-          } else if (axis == Axis::Y) {
-            vx = H.x(x, slice, y);
-            vy = H.y(x, slice, y);
-            vz = H.z(x, slice, y);
-          } else {
-            vx = H.x(x, y, slice);
-            vy = H.y(x, y, slice);
-            vz = H.z(x, y, slice);
-          }
-        }
+        const std::array<double, 3> values =
+            (field == WhichField::E)
+                ? sample(E, x, y)
+                : (field == WhichField::J) ? sample(J, x, y) : sample(H, x, y);
+        const double vx = values[0];
+        const double vy = values[1];
+        const double vz = values[2];
         mags.push_back(std::sqrt(vx * vx + vy * vy + vz * vz));
       }
 
@@ -112,51 +135,13 @@ template <int N> struct FieldView2D {
     for (auto y{1}; y < dims[1] - 1; ++y)
       for (auto x{1}; x < dims[0] - 1; ++x) {
         float *pixel = static_cast<float *>(image->GetScalarPointer(x, y, 0));
-        double vx, vy, vz;
-
-        if (field == WhichField::E) {
-          if (axis == Axis::X) {
-            vx = E.x(slice, x, y);
-            vy = E.y(slice, x, y);
-            vz = E.z(slice, x, y);
-          } else if (axis == Axis::Y) {
-            vx = E.x(x, slice, y);
-            vy = E.y(x, slice, y);
-            vz = E.z(x, slice, y);
-          } else {
-            vx = E.x(x, y, slice);
-            vy = E.y(x, y, slice);
-            vz = E.z(x, y, slice);
-          }
-        } else if (field == WhichField::J) {
-          if (axis == Axis::X) {
-            vx = J.x(slice, x, y);
-            vy = J.y(slice, x, y);
-            vz = J.z(slice, x, y);
-          } else if (axis == Axis::Y) {
-            vx = J.x(x, slice, y);
-            vy = J.y(x, slice, y);
-            vz = J.z(x, slice, y);
-          } else {
-            vx = J.x(x, y, slice);
-            vy = J.y(x, y, slice);
-            vz = J.z(x, y, slice);
-          }
-        } else {
-          if (axis == Axis::X) {
-            vx = H.x(slice, x, y);
-            vy = H.y(slice, x, y);
-            vz = H.z(slice, x, y);
-          } else if (axis == Axis::Y) {
-            vx = H.x(x, slice, y);
-            vy = H.y(x, slice, y);
-            vz = H.z(x, slice, y);
-          } else {
-            vx = H.x(x, y, slice);
-            vy = H.y(x, y, slice);
-            vz = H.z(x, y, slice);
-          }
-        }
+        std::array<double, 3> values =
+            (field == WhichField::E)
+                ? sample(E, x, y)
+                : (field == WhichField::J) ? sample(J, x, y) : sample(H, x, y);
+        double vx = values[0];
+        double vy = values[1];
+        double vz = values[2];
 
         const double m = std::sqrt(vx * vx + vy * vy + vz * vz);
         if (m > cutoff) {

@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 #include "runtime_field.hpp"
@@ -11,24 +12,24 @@
 #include "parallel_jacobi.hpp"
 #include "level.hpp"
 
-template <int N> struct ResidualStats {
+template <int NX, int NY, int NZ> struct ResidualStats {
   double l2_abs;
   double l2_rel;
   double linf_abs;
 };
 
-template <int N>
-ResidualStats<N>
-calculate_residuals(const Field<N, Component::Charge> &charge,
-                    const Field<N, Component::Potential> &potential) {
+template <int NX, int NY, int NZ>
+ResidualStats<NX, NY, NZ>
+calculate_residuals(const Field<NX, NY, NZ, Component::Charge> &charge,
+                    const Field<NX, NY, NZ, Component::Potential> &potential) {
   double sum_r2 = 0.0;
   double sum_b2 = 0.0;
   double linf = 0.0;
   std::size_t count = 0;
 
-  for (int x = 1; x < N - 2; ++x)
-    for (int y = 1; y < N - 2; ++y)
-      for (int z = 1; z < N - 2; ++z) {
+  for (int x = 1; x < charge.nx() - 1; ++x)
+    for (int y = 1; y < charge.ny() - 1; ++y)
+      for (int z = 1; z < charge.nz() - 1; ++z) {
         const double lap = potential(x - 1, y, z) + potential(x + 1, y, z) +
                            potential(x, y - 1, z) + potential(x, y + 1, z) +
                            potential(x, y, z - 1) + potential(x, y, z + 1) -
@@ -82,9 +83,9 @@ void update_residual_cg(RuntimeField &residual, double alpha,
 
 void apply_laplacian(const RuntimeField &guess, RuntimeField &out);
 
-template <int N>
-void solve_potential_pcg(const Field<N, Component::Charge> &charge,
-                         Field<N, Component::Potential> &potential) {
+template <int NX, int NY, int NZ>
+void solve_potential_pcg(const Field<NX, NY, NZ, Component::Charge> &charge,
+                         Field<NX, NY, NZ, Component::Potential> &potential) {
   const double tiny = 1e-30;
   const int smoothing = 3;
   const double tol = 1e-11;

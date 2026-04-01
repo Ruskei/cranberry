@@ -20,16 +20,26 @@
 void run_3d() {
   std::cout << "Running 3D FDTD sim!!" << std::endl;
 
-  const int size = Config::size;
+  constexpr int nx = Config::nx;
+  constexpr int ny = Config::ny;
+  constexpr int nz = Config::nz;
+  constexpr int print_interval = Config::print_interval;
+  constexpr int slice_z = (nz - 1) / 2;
+  constexpr double particle_x = (nx - 1) / 2.0;
+  constexpr double particle_y = (ny - 1) / 8.0;
+  constexpr double particle_z = (nz - 1) / 2.0;
 
-  std::vector<SimulationResult<size>> results;
-  results.emplace_back(PrintResult{10});
-  results.emplace_back(FieldView2D<size>("e-field", WhichField::E, Axis::Z, 64, 10));
+  std::vector<SimulationResult<nx, ny, nz>> results;
+  results.emplace_back(PrintResult{print_interval});
+  results.emplace_back(
+      FieldView2D<nx, ny, nz>("e-field", WhichField::E, Axis::Z, slice_z,
+                              print_interval));
 
-  Sim<size> grid(
+  Sim<nx, ny, nz> grid(
     std::vector<Particle>{
-      Particle{64, 16, 64, 0, 0.5, 0, 1, 1},
-      // Particle{64, 70, 64, 0, -0.5, 0, -1, 1},
+      Particle{particle_x, particle_y, particle_z, 0, 0.5, 0, 1, 1},
+      // Particle{particle_x, particle_y * 4.0 + 6.0, particle_z, 0, -0.5, 0,
+      //          -1, 1},
     },
     std::move(results)
   );

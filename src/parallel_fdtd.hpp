@@ -1,3 +1,5 @@
+#pragma once
+
 #include <algorithm>
 #include <condition_variable>
 #include <mutex>
@@ -5,7 +7,8 @@
 
 #include "fdtd_types.hpp"
 
-template <int N> struct ParallelFDTD {
+template <int NX, int NY, int NZ> struct ParallelFDTD {
+  using Shape = GridShape<NX, NY, NZ>;
   enum Type { none, e, h };
 
   struct Worker {
@@ -134,9 +137,9 @@ template <int N> struct ParallelFDTD {
   int active_workers{};
   Type type{none};
   int job_id{};
-  EField<N> *E{nullptr};
-  HField<N> *H{nullptr};
-  JField<N> *J{nullptr};
+  EField<NX, NY, NZ> *E{nullptr};
+  HField<NX, NY, NZ> *H{nullptr};
+  JField<NX, NY, NZ> *J{nullptr};
 
   ParallelFDTD(int thread_count = std::thread::hardware_concurrency()) {
     if (thread_count == 0)
@@ -165,7 +168,8 @@ template <int N> struct ParallelFDTD {
   ParallelFDTD(const ParallelFDTD &other) = delete;
   ParallelFDTD &operator=(const ParallelFDTD &other) = delete;
 
-  void half_update_h_serial(const EField<N> &E, HField<N> &H) {
+  void half_update_h_serial(const EField<NX, NY, NZ> &E,
+                            HField<NX, NY, NZ> &H) {
     for (auto x{0}; x < H.x.nx(); ++x)
       for (auto y{0}; y < H.x.ny(); ++y)
         for (auto z{0}; z < H.x.nz(); ++z) {
@@ -194,8 +198,9 @@ template <int N> struct ParallelFDTD {
         }
   }
 
-  void half_update_e_serial(EField<N> &E, const HField<N> &H,
-                            const JField<N> &J) {
+  void half_update_e_serial(EField<NX, NY, NZ> &E,
+                            const HField<NX, NY, NZ> &H,
+                            const JField<NX, NY, NZ> &J) {
     for (auto x{0}; x < E.x.nx(); ++x)
       for (auto y{1}; y < E.x.ny() - 1; ++y)
         for (auto z{1}; z < E.x.nz() - 1; ++z) {
@@ -227,9 +232,9 @@ template <int N> struct ParallelFDTD {
         }
   }
 
-  void half_update(Type t, EField<N> *e, HField<N> *h, JField<N> *j,
-                   int x_x_min, int x_x_max, int y_x_min, int y_x_max,
-                   int z_x_min, int z_x_max) {
+  void half_update(Type t, EField<NX, NY, NZ> *e, HField<NX, NY, NZ> *h,
+                   JField<NX, NY, NZ> *j, int x_x_min, int x_x_max,
+                   int y_x_min, int y_x_max, int z_x_min, int z_x_max) {
     const int x_x_range = x_x_max - x_x_min;
     const int y_x_range = y_x_max - y_x_min;
     const int z_x_range = z_x_max - z_x_min;
@@ -288,7 +293,7 @@ template <int N> struct ParallelFDTD {
     }
   }
 
-  void half_update_h(EField<N> &e, HField<N> &h) {
+  void half_update_h(EField<NX, NY, NZ> &e, HField<NX, NY, NZ> &h) {
     const long long threshold = 1LL * 64 * 64 * 64;
     if (h.x.v.size() < threshold || workers.size() == 1) {
       half_update_h_serial(e, h);
@@ -299,7 +304,8 @@ template <int N> struct ParallelFDTD {
                 h.z.nx());
   }
 
-  void half_update_e(EField<N> &e, HField<N> &h, JField<N> &j) {
+  void half_update_e(EField<NX, NY, NZ> &e, HField<NX, NY, NZ> &h,
+                     JField<NX, NY, NZ> &j) {
     const long long threshold = 1LL * 64 * 64 * 64;
     if (h.x.v.size() < threshold || workers.size() == 1) {
       half_update_e_serial(e, h, j);
