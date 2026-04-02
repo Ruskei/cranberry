@@ -24,6 +24,7 @@ add_executable(cranberry
 	src/main.cpp
 	src/print_result.cpp
 	src/physical_converter.cpp
+	src/particle_distribution.cpp
 )
 
 target_include_directories(cranberry

@@ -431,13 +431,13 @@ template <int NX, int NY, int NZ> struct Sim {
     half_update_e();
     boundary.apply(E);
 
-    time += Config::dt;
-
     const auto result_handler = overloads{
       [&](PrintResult &result){ result.step(time); },
       [&](FieldView2D<NX, NY, NZ> &result){ result.step(time, E, J, H); }
     };
     for (auto &result : results) std::visit(result_handler, result);
+
+    time += Config::dt;
   }
 
   void finish() {

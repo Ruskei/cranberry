@@ -11,6 +11,7 @@
 #include <vtkPolyData.h>
 #include <vtkXMLPolyDataWriter.h>
 
+#include "particle_distribution.hpp"
 #include "config.hpp"
 #include "grid.hpp"
 #include "particles.hpp"
@@ -27,10 +28,7 @@ void run_3d() {
   constexpr int ny = Config::ny;
   constexpr int nz = Config::nz;
   constexpr int print_interval = Config::print_interval;
-  constexpr int slice_z = (nz - 1) / 2;
-  constexpr double particle_x = (nx - 1) / 2.0;
-  constexpr double particle_y = (ny - 1) / 8.0;
-  constexpr double particle_z = (nz - 1) / 2.0;
+  constexpr int slice_z = 15;
 
   std::vector<SimulationResult<nx, ny, nz>> results;
   results.emplace_back(PrintResult{print_interval});
@@ -47,14 +45,19 @@ void run_3d() {
     << ", m'=" << sim_mass
     << std::endl;
 
+  std::vector<Particle> particles;
+
+  std::vector<Particle> electrons{generate_particle_distribution(
+      electron_species, 0.2, 
+      10e-6, 32e-6, 10e-6,
+      20e-6, 64e-6, 20e-6, 
+      1e22, converter
+  )};
+
+  particles.insert(particles.end(), electrons.begin(), electrons.end());
+
   Sim<nx, ny, nz> grid(
-    std::vector<Particle>{
-      Particle{
-        particle_x, particle_y, particle_z,
-        0, sim_velocity, 0,
-        sim_charge, sim_mass
-      },
-    },
+    particles,
     std::move(results)
   );
 
@@ -62,9 +65,10 @@ void run_3d() {
 
   auto start = std::chrono::steady_clock::now();
 
+  grid.step();
   while (grid.time < Config::max_time)
     grid.step();
-  
+
   grid.finish();
 
   auto finished = std::chrono::steady_clock::now();
