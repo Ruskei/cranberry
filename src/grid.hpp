@@ -85,7 +85,20 @@ template <int NX, int NY, int NZ> struct Sim {
 
   Sim(std::vector<Particle> particles,
       std::vector<SimulationResult<NX, NY, NZ>> results)
-      : particles{std::move(particles)}, results{std::move(results)} {
+      : particles{std::move(particles)}, results{std::move(results)} {}
+
+  void setup_coefficients() {
+    const double c = Config::courants;
+    const double imp0 = Config::imp0;
+    setup_field_coeffients(E.cxe, E.cxh, c * imp0);
+    setup_field_coeffients(E.cye, E.cyh, c * imp0);
+    setup_field_coeffients(E.cze, E.czh, c * imp0);
+    setup_field_coeffients(H.cxh, H.cxe, c / imp0);
+    setup_field_coeffients(H.cyh, H.cye, c / imp0);
+    setup_field_coeffients(H.czh, H.cze, c / imp0);
+  }
+
+  void initialize() {
     std::cout << "Depositing charge..." << std::endl;
     deposit_charge(this->particles, charge);
     binom_smooth_field(charge);
@@ -102,17 +115,8 @@ template <int NX, int NY, int NZ> struct Sim {
     std::cout << "Applying potential" << std::endl;
     apply_potential();
     std::cout << "Finished grid initialization" << std::endl;
-  }
 
-  void setup_coefficients() {
-    const double c = Config::courants;
-    const double imp0 = Config::imp0;
-    setup_field_coeffients(E.cxe, E.cxh, c * imp0);
-    setup_field_coeffients(E.cye, E.cyh, c * imp0);
-    setup_field_coeffients(E.cze, E.czh, c * imp0);
-    setup_field_coeffients(H.cxh, H.cxe, c / imp0);
-    setup_field_coeffients(H.cyh, H.cye, c / imp0);
-    setup_field_coeffients(H.czh, H.cze, c / imp0);
+    setup_coefficients();
   }
 
   void half_update_h() {

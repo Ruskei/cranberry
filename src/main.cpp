@@ -38,16 +38,27 @@ void run_3d() {
       FieldView2D<nx, ny, nz>("e-field", WhichField::E, Axis::Z, slice_z,
                               print_interval));
 
+  const double sim_velocity = converter.to_sim_velocity(light_speed * 0.5);
+  const double sim_charge = converter.to_sim_charge(-fundamental_charge);
+  const double sim_mass = converter.to_sim_mass(electron_mass);
+
+  std::cout << "v'=" << sim_velocity
+    << ", q'=" << sim_charge
+    << ", m'=" << sim_mass
+    << std::endl;
+
   Sim<nx, ny, nz> grid(
     std::vector<Particle>{
-      Particle{particle_x, particle_y, particle_z, 0, converter.to_sim_velocity(light_speed * 0.5), 0, 1, 1},
-      // Particle{particle_x, particle_y * 4.0 + 6.0, particle_z, 0, -0.5, 0,
-      //          -1, 1},
+      Particle{
+        particle_x, particle_y, particle_z,
+        0, sim_velocity, 0,
+        sim_charge, sim_mass
+      },
     },
     std::move(results)
   );
 
-  grid.setup_coefficients();
+  grid.initialize();
 
   auto start = std::chrono::steady_clock::now();
 
