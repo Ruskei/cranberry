@@ -110,8 +110,12 @@ template <int NX, int NY, int NZ> struct FieldView2D {
     mkdir(("out/" + name + "/field").c_str(), 0755);
   }
 
-  void step(double time, const EField<NX, NY, NZ> &E,
-            const JField<NX, NY, NZ> &J, const HField<NX, NY, NZ> &H) {
+  void step(
+      double time,
+      const EField<NX, NY, NZ> &E,
+      const JField<NX, NY, NZ> &J,
+      const HField<NX, NY, NZ> &H
+    ) {
     if (static_cast<int>(std::round(time / Config::dt)) % interval != 0) return;
 
     std::vector<double> mags;

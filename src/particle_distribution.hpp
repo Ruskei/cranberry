@@ -8,9 +8,11 @@ struct ParticleSpecies {
 };
 
 inline const ParticleSpecies electron_species{-fundamental_charge, electron_mass};
+inline const ParticleSpecies positron_species{fundamental_charge, electron_mass};
 
 std::vector<Particle> generate_particle_distribution(
-    ParticleSpecies species, double macroparticles_per_cell,
+    ParticleSpecies species, double vx, double vy, double vz,
+    double macroparticles_per_cell,
     double lower_bound_x, double lower_bound_y, double lower_bound_z,
     double upper_bound_x, double upper_bound_y, double upper_bound_z,
     double density,

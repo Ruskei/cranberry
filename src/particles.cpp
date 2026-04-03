@@ -80,6 +80,30 @@ double form_factor(double px, double nx) {
   }
 }
 
+double form_factor_x1(const Particle &particle, double idx) {
+  return form_factor(particle.px, idx);
+}
+
+double form_factor_x2(const Particle &particle, double idx) {
+  return form_factor(particle.p_prev_x, idx);
+}
+
+double form_factor_y1(const Particle &particle, double idx) {
+  return form_factor(particle.py, idx);
+}
+
+double form_factor_y2(const Particle &particle, double idx) {
+  return form_factor(particle.p_prev_y, idx);
+}
+
+double form_factor_z1(const Particle &particle, double idx) {
+  return form_factor(particle.pz, idx);
+}
+
+double form_factor_z2(const Particle &particle, double idx) {
+  return form_factor(particle.p_prev_z, idx);
+}
+
 double form_factor_diff_helper(double s_o_x, double s_o_y, double s_o_z,
                                double s_n_x, double s_n_y, double s_n_z) {
   return (s_n_x * s_n_y * s_n_z - s_o_x * s_n_y * s_n_z +

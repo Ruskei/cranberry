@@ -241,9 +241,26 @@ template <int NX, int NY, int NZ> struct Sim {
       const int js = std::max(0, std::min(j, pj) - particle_radius);
       const int ks = std::max(0, std::min(k, pk) - particle_radius);
 
-      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + 1 + particle_radius);
-      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + 1 + particle_radius);
-      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + 1 + particle_radius);
+      const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + particle_radius);
+      const int je = std::min(J.y.ny() - 1, std::max(j, pj) + particle_radius);
+      const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + particle_radius);
+
+      const int num = particle_radius * 2 + 2;
+      std::array<double, num> x1_form_factors{};
+      std::array<double, num> x2_form_factors{};
+      std::array<double, num> y1_form_factors{};
+      std::array<double, num> y2_form_factors{};
+      std::array<double, num> z1_form_factors{};
+      std::array<double, num> z2_form_factors{};
+
+      for (auto i{0}; i < num; i++) {
+        x1_form_factors[i] = form_factor_x1(p, is + i);
+        x2_form_factors[i] = form_factor_x2(p, is + i);
+        y1_form_factors[i] = form_factor_y1(p, js + i);
+        y2_form_factors[i] = form_factor_y2(p, js + i);
+        z1_form_factors[i] = form_factor_z1(p, ks + i);
+        z2_form_factors[i] = form_factor_z2(p, ks + i);
+      }
 
       const double move_co = -p.q / Config::dt;
 
@@ -252,7 +269,10 @@ template <int NX, int NY, int NZ> struct Sim {
           double move_sum = 0.0;
           for (auto x{is}; x <= ie; ++x) {
             move_sum +=
-                move_co * form_factor_diff<CartesianComponent::x>(p, x, y, z);
+                move_co * form_factor_diff<CartesianComponent::x>(
+                              x1_form_factors[x - is], x2_form_factors[x - is],
+                              y1_form_factors[y - js], y2_form_factors[y - js],
+                              z1_form_factors[z - ks], z2_form_factors[z - ks]);
             J.x(x, y, z) += move_sum;
           }
         }
@@ -262,7 +282,10 @@ template <int NX, int NY, int NZ> struct Sim {
           double move_sum = 0.0;
           for (auto y{js}; y <= je; ++y) {
             move_sum +=
-                move_co * form_factor_diff<CartesianComponent::y>(p, x, y, z);
+                move_co * form_factor_diff<CartesianComponent::y>(
+                              x1_form_factors[x - is], x2_form_factors[x - is],
+                              y1_form_factors[y - js], y2_form_factors[y - js],
+                              z1_form_factors[z - ks], z2_form_factors[z - ks]);
             J.y(x, y, z) += move_sum;
           }
         }
@@ -272,7 +295,10 @@ template <int NX, int NY, int NZ> struct Sim {
           double move_sum = 0.0;
           for (auto z{ks}; z <= ke; ++z) {
             move_sum +=
-                move_co * form_factor_diff<CartesianComponent::z>(p, x, y, z);
+                move_co * form_factor_diff<CartesianComponent::x>(
+                              x1_form_factors[x - is], x2_form_factors[x - is],
+                              y1_form_factors[y - js], y2_form_factors[y - js],
+                              z1_form_factors[z - ks], z2_form_factors[z - ks]);
             J.z(x, y, z) += move_sum;
           }
         }
@@ -410,6 +436,13 @@ template <int NX, int NY, int NZ> struct Sim {
                 << std::endl;
   }
 
+  long long half_update_duration{0};
+  long long boundary_duration{0};
+  long long step_particles_duration{0};
+  long long push_particles_duration{0};
+  long long deposit_currents_duration{0};
+  long long smooth_currents_duration{0};
+
   /*
    * half-update E^(n    ) -> E^(n+1/2) with H^(n    )
    * half-update H^(n    ) -> H^(n+1/2) with E^(n+1/2)
@@ -418,18 +451,34 @@ template <int NX, int NY, int NZ> struct Sim {
    * half-update E^(n+1/2) -> E^(n    ) with H^(n+1/2)
    */
   void step() {
+    auto start = std::chrono::steady_clock::now();
     half_update_e();
     half_update_h();
+    auto half_update_1 = std::chrono::steady_clock::now();
     boundary.apply(E);
+    auto boundary_1 = std::chrono::steady_clock::now();
 
     step_particles();
+    auto step_particles = std::chrono::steady_clock::now();
     push_particles();
+    auto push_particles = std::chrono::steady_clock::now();
     deposit_currents();
+    auto deposit_currents = std::chrono::steady_clock::now();
     smooth_currents();
+    auto smooth_currents = std::chrono::steady_clock::now();
 
     half_update_h();
     half_update_e();
+    auto half_update_2 = std::chrono::steady_clock::now();
     boundary.apply(E);
+    auto boundary_2 = std::chrono::steady_clock::now();
+
+    half_update_duration += std::chrono::duration_cast<std::chrono::nanoseconds>(half_update_1 - start + half_update_2 - smooth_currents).count();
+    boundary_duration += std::chrono::duration_cast<std::chrono::nanoseconds>(boundary_1 - half_update_1 + boundary_2 - half_update_2).count();
+    step_particles_duration += std::chrono::duration_cast<std::chrono::nanoseconds>(step_particles - boundary_1).count();
+    push_particles_duration += std::chrono::duration_cast<std::chrono::nanoseconds>(push_particles - step_particles).count();
+    deposit_currents_duration += std::chrono::duration_cast<std::chrono::nanoseconds>(deposit_currents - push_particles).count();
+    smooth_currents_duration += std::chrono::duration_cast<std::chrono::nanoseconds>(smooth_currents - deposit_currents).count();
 
     const auto result_handler = overloads{
       [&](PrintResult &result){ result.step(time); },
@@ -446,5 +495,12 @@ template <int NX, int NY, int NZ> struct Sim {
       [&](FieldView2D<NX, NY, NZ> &result){ result.finish(); }
     };
     for (auto &result : results) std::visit(result_handler, result);
+
+    std::cout << "half_update_duration=" << (static_cast<double>(half_update_duration) / 1'000'000.0) << "ms" << std::endl;
+    std::cout << "boundary_duration=" << (static_cast<double>(boundary_duration) / 1'000'000.0) << "ms" << std::endl;
+    std::cout << "step_particles_duration=" << (static_cast<double>(step_particles_duration) / 1'000'000.0) << "ms" << std::endl;
+    std::cout << "push_particles_duration=" << (static_cast<double>(push_particles_duration) / 1'000'000.0) << "ms" << std::endl;
+    std::cout << "deposit_currents_duration=" << (static_cast<double>(deposit_currents_duration) / 1'000'000.0) << "ms" << std::endl;
+    std::cout << "smooth_currents_duration=" << (static_cast<double>(smooth_currents_duration) / 1'000'000.0) << "ms" << std::endl;
   }
 };
