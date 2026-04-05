@@ -266,6 +266,10 @@ template <int NX, int NY, int NZ> struct ParallelCurrentDepositor {
   ParallelCurrentDepositor &operator=(const ParallelCurrentDepositor &other) = delete;
 
   void deposit_currents(std::vector<Particle> &particles, JField<NX, NY, NZ> *j) {
+    std::fill(j->x.v.begin(), j->x.v.end(), 0);
+    std::fill(j->y.v.begin(), j->y.v.end(), 0);
+    std::fill(j->z.v.begin(), j->z.v.end(), 0);
+
     const int max_threads = workers.size();
     const int num_particles = static_cast<int>(particles.size());
     const int active = std::min(num_particles, max_threads);
