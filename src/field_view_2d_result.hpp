@@ -106,8 +106,8 @@ template <int NX, int NY, int NZ> struct FieldView2D {
         }
 
     mkdir("out", 0755);
-    mkdir(("out/" + name).c_str(), 0755);
-    mkdir(("out/" + name + "/field").c_str(), 0755);
+    mkdir(("out/" + this->name).c_str(), 0755);
+    mkdir(("out/" + this->name + "/field").c_str(), 0755);
   }
 
   void step(

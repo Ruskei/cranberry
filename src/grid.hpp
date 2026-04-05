@@ -220,6 +220,14 @@ template <int NX, int NY, int NZ> struct Sim {
     std::fill(J.y.v.begin(), J.y.v.end(), 0);
     std::fill(J.z.v.begin(), J.z.v.end(), 0);
 
+    const int num = particle_radius * 2 + 2;
+    std::array<double, num> x1_form_factors{};
+    std::array<double, num> x2_form_factors{};
+    std::array<double, num> y1_form_factors{};
+    std::array<double, num> y2_form_factors{};
+    std::array<double, num> z1_form_factors{};
+    std::array<double, num> z2_form_factors{};
+
     for (const auto &p : particles) {
       const double px = p.px;
       const double py = p.py;
@@ -244,14 +252,6 @@ template <int NX, int NY, int NZ> struct Sim {
       const int ie = std::min(J.x.nx() - 1, std::max(i, pi) + particle_radius);
       const int je = std::min(J.y.ny() - 1, std::max(j, pj) + particle_radius);
       const int ke = std::min(J.z.nz() - 1, std::max(k, pk) + particle_radius);
-
-      const int num = particle_radius * 2 + 2;
-      std::array<double, num> x1_form_factors{};
-      std::array<double, num> x2_form_factors{};
-      std::array<double, num> y1_form_factors{};
-      std::array<double, num> y2_form_factors{};
-      std::array<double, num> z1_form_factors{};
-      std::array<double, num> z2_form_factors{};
 
       for (auto i{0}; i < num; i++) {
         x1_form_factors[i] = form_factor_x1(p, is + i);
@@ -295,7 +295,7 @@ template <int NX, int NY, int NZ> struct Sim {
           double move_sum = 0.0;
           for (auto z{ks}; z <= ke; ++z) {
             move_sum +=
-                move_co * form_factor_diff<CartesianComponent::x>(
+                move_co * form_factor_diff<CartesianComponent::z>(
                               x1_form_factors[x - is], x2_form_factors[x - is],
                               y1_form_factors[y - js], y2_form_factors[y - js],
                               z1_form_factors[z - ks], z2_form_factors[z - ks]);

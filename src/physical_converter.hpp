@@ -4,6 +4,7 @@
 
 inline const double light_speed{299'792'458};
 inline const double electron_mass{9.109'383'7139e-31};
+inline const double proton_mass{1.672'621'925'95e-27};
 inline const double fundamental_charge{1.602e-19};
 inline const double m0{electron_mass};
 inline const double e0{8.8541878188e-12};

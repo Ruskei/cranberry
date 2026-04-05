@@ -11,6 +11,7 @@
 #include <vtkPolyData.h>
 #include <vtkXMLPolyDataWriter.h>
 
+#include "linalg.hpp"
 #include "config.hpp"
 #include "field_view_2d_result.hpp"
 #include "grid.hpp"
@@ -28,40 +29,41 @@ void run_3d() {
   constexpr int ny = Config::ny;
   constexpr int nz = Config::nz;
   constexpr int print_interval = Config::print_interval;
-  constexpr int slice_z = 15;
+  constexpr int slice_z = (nx - 1) / 2;
 
   std::vector<SimulationResult<nx, ny, nz>> results;
   results.emplace_back(PrintResult{print_interval});
   results.emplace_back(FieldView2D<nx, ny, nz>(
       "e-field", WhichField::E, Axis::Z, slice_z, print_interval));
 
-  const double sim_velocity = converter.to_sim_velocity(light_speed * 0.5);
-  const double sim_charge = converter.to_sim_charge(-fundamental_charge);
-  const double sim_mass = converter.to_sim_mass(electron_mass);
-
-  std::cout << "v'=" << sim_velocity << ", q'=" << sim_charge
-            << ", m'=" << sim_mass << std::endl;
-
   std::vector<Particle> particles;
 
-  double beam_lb_x = 14e-6, beam_lb_y = 8e-6, beam_lb_z = 14e-6;
-  double beam_x = 4e-6, beam_y = 4e-6, beam_z = 4e-6;
-  double beam_speed = light_speed * 0.9;
+  const Vec3d target_lb{8e-6, 16e-6, 8e-6};
+  const Vec3d target_ub{56e-6, 124e-6, 56e-6};
+  const double target_density{1e23};
 
-  double target_lb_x = 9e-6, target_lb_y = 24e-6, target_lb_z = 9e-6;
-  double target_x = 14e-6, target_y = 20e-6, target_z = 14e-6;
+  const UniformDistribution target_electron_distribution{
+      electron_species, target_lb, target_ub, target_density, 1};
+  const UniformDistribution target_proton_distribution{
+      proton_species, target_lb, target_ub, target_density, 1};
 
-  std::vector<Particle> beam{generate_particle_distribution(
-      electron_species, 0, beam_speed, 0, 1, beam_lb_x, beam_lb_y,
-      beam_lb_z, beam_lb_x + beam_x, beam_lb_y + beam_y, beam_lb_z + beam_z,
-      1e22, converter)};
+  const Vec3d beam_velocity{0, light_speed * 0.9, 0};
+  const Vec3d beam_p{32e-6, 12e-6, 32e-6};
+  const Vec3d beam_rms{2e-6, 4e-6, 2e-6};
+  const double beam_q_total{-1e-10};
+  const double beam_m_total{1e10};
+  const int beam_num_particles{1000};
 
-  std::vector<Particle> electrons{
-    generate_particle_distribution(electron_species, 0, 0, 0, 1, target_lb_x, target_lb_y, target_lb_z,
-        target_lb_x + target_x, target_lb_y + target_y, target_lb_z + target_z, 1e22, converter)};
-  std::vector<Particle> positrons{
-    generate_particle_distribution(positron_species, 0, 0, 0, 1, target_lb_x, target_lb_y, target_lb_z,
-        target_lb_x + target_x, target_lb_y + target_y, target_lb_z + target_z, 1e22, converter)};
+  const GaussianDistribution beam_distribution{
+    beam_p, beam_rms,
+    beam_q_total, beam_m_total,
+    beam_num_particles
+  };
+
+  std::vector<Particle> beam{generate_particle_distribution(beam_velocity, beam_distribution, converter)};
+
+  std::vector<Particle> electrons{generate_particle_distribution(Vec3d{}, target_electron_distribution, converter)};
+  std::vector<Particle> positrons{generate_particle_distribution(Vec3d{}, target_proton_distribution, converter)};
 
   particles.insert(particles.end(), electrons.begin(), electrons.end());
   particles.insert(particles.end(), positrons.begin(), positrons.end());
@@ -73,7 +75,6 @@ void run_3d() {
 
   auto start = std::chrono::steady_clock::now();
 
-  grid.step();
   while (grid.time < Config::max_time)
     grid.step();
 
