@@ -9,6 +9,7 @@
 #include <utility>
 #include <variant>
 
+#include "parallel_particle_pusher.hpp"
 #include "parallel_current_deposition.hpp"
 #include "print_result.hpp"
 #include "field_view_2d_result.hpp"
@@ -36,6 +37,7 @@ template <int NX, int NY, int NZ> struct Sim {
 
   std::vector<Particle> particles;
   ParallelFDTD<NX, NY, NZ> parallel_fdtd{8};
+  ParallelParticlePusher<NX, NY, NZ> particle_pusher{8};
   ParallelCurrentDepositor<NX, NY, NZ> current_depositor{8};
   ABC<NX, NY, NZ> boundary;
   double time{0.0};
@@ -543,7 +545,7 @@ template <int NX, int NY, int NZ> struct Sim {
 
     step_particles();
     auto step_particles = std::chrono::steady_clock::now();
-    push_particles();
+    particle_pusher.push_particles(&E, &H, particles);
     auto push_particles = std::chrono::steady_clock::now();
     current_depositor.deposit_currents(particles, &J);
     auto deposit_currents = std::chrono::steady_clock::now();
