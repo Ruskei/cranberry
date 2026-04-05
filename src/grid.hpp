@@ -9,6 +9,7 @@
 #include <utility>
 #include <variant>
 
+#include "parallel_current_deposition.hpp"
 #include "print_result.hpp"
 #include "field_view_2d_result.hpp"
 #include "abc.hpp"
@@ -35,6 +36,7 @@ template <int NX, int NY, int NZ> struct Sim {
 
   std::vector<Particle> particles;
   ParallelFDTD<NX, NY, NZ> parallel_fdtd{8};
+  ParallelCurrentDepositor<NX, NY, NZ> current_depositor{8};
   ABC<NX, NY, NZ> boundary;
   double time{0.0};
 
@@ -483,9 +485,6 @@ template <int NX, int NY, int NZ> struct Sim {
           }
     }
 
-    double total_charge_diff = 0.0;
-    double total_div_J = 0.0;
-
     for (auto x{1}; x < charge_diff.nx() - 1; ++x)
       for (auto y{1}; y < charge_diff.ny() - 1; ++y)
         for (auto z{1}; z < charge_diff.nz() - 1; ++z) {
@@ -494,18 +493,11 @@ template <int NX, int NY, int NZ> struct Sim {
                                (J.y(x, y, z) - J.y(x, y - 1, z)) +
                                (J.z(x, y, z) - J.z(x, y, z - 1));
 
-          total_div_J += div_J;
-          total_charge_diff += timed_charge_diff;
           const double residual = (timed_charge_diff + div_J);
           if (std::abs(residual) > 1e-11)
             std::cout << "  R=" << residual << ", Δρ/Δt=" << timed_charge_diff
                       << ", ΔJ=" << div_J << std::endl;
         }
-
-    if (std::abs(total_charge_diff) > 1e-11)
-      std::cout << "Δp/Δt=" << total_charge_diff << std::endl;
-    if (std::abs(total_div_J) > 1e-11)
-      std::cout << "∇J=" << total_div_J << std::endl;
   }
 
   void check_gauss() {
@@ -553,7 +545,7 @@ template <int NX, int NY, int NZ> struct Sim {
     auto step_particles = std::chrono::steady_clock::now();
     push_particles();
     auto push_particles = std::chrono::steady_clock::now();
-    deposit_currents();
+    current_depositor.deposit_currents(particles, &J);
     auto deposit_currents = std::chrono::steady_clock::now();
     smooth_currents();
     auto smooth_currents = std::chrono::steady_clock::now();

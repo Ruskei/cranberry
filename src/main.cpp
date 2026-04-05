@@ -47,8 +47,8 @@ void run_3d() {
   const UniformDistribution target_proton_distribution{
       proton_species, target_lb, target_ub, target_density, 1};
 
-  const Vec3d beam_velocity{0, light_speed * 0.9, 0};
-  const Vec3d beam_p{32e-6, 12e-6, 32e-6};
+  const Vec3d beam_velocity{0, light_speed * 0.9999, 0};
+  const Vec3d beam_p{32e-6, 20e-6, 32e-6};
   const Vec3d beam_rms{2e-6, 4e-6, 2e-6};
   const double beam_q_total{-1e-10};
   const double beam_m_total{1e10};
