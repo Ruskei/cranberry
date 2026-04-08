@@ -32,3 +32,5 @@ struct PhysicalConverter {
   double to_sim_mass(double physical_mass) const;
   double to_sim_charge(double physical_charge) const;
 };
+
+double proper_velocity_to_coord_velocity(double proper_velocity);

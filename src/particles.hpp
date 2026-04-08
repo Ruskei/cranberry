@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <vector>
+#include <cmath>
 
 namespace {
   inline constexpr int particle_radius{2};
@@ -22,6 +23,10 @@ struct Particle {
   double vy;
   double vz;
 
+  double ux;
+  double uy;
+  double uz;
+
   double q;
   double m;
 
@@ -32,7 +37,13 @@ struct Particle {
   Particle(double px, double py, double pz, double vx, double vy, double vz,
            double q, double m)
       : px{px}, py{py}, pz{pz}, p_prev_x{px}, p_prev_y{py}, p_prev_z{pz},
-        vx{vx}, vy{vy}, vz{vz}, q{q}, m{m} {}
+        vx{vx}, vy{vy}, vz{vz}, ux{}, uy{}, uz{}, q{q}, m{m} {
+    const double gamma =
+        1.0 / std::sqrt(1.0 - (vx * vx + vy * vy + vz * vz));
+    ux = gamma * vx;
+    uy = gamma * vy;
+    uz = gamma * vz;
+  }
 };
 
 enum class CartesianComponent { x, y, z };

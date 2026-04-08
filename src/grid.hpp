@@ -9,6 +9,7 @@
 #include <utility>
 #include <variant>
 
+#include "particle_view_3d_result.hpp"
 #include "parallel_particle_pusher.hpp"
 #include "parallel_current_deposition.hpp"
 #include "print_result.hpp"
@@ -24,7 +25,7 @@ template<class... Ts>
 struct overloads : Ts... { using Ts::operator()...; };
 
 template <int NX, int NY, int NZ>
-using SimulationResult = std::variant<PrintResult, FieldView2D<NX, NY, NZ>>;
+using SimulationResult = std::variant<PrintResult, FieldView2D<NX, NY, NZ>, ParticleView3D>;
 
 template <int NX, int NY, int NZ> struct Sim {
   using Shape = GridShape<NX, NY, NZ>;
@@ -139,30 +140,18 @@ template <int NX, int NY, int NZ> struct Sim {
   }
 
   void push_particles() {
-    const double epsilon = 1e-12;
     const double dt = Config::dt;
     for (auto &p : particles) {
       const double nx = p.px;
       const double ny = p.py;
       const double nz = p.pz;
 
-      double vx = p.vx;
-      double vy = p.vy;
-      double vz = p.vz;
-
-      double vv = vx * vx + vy * vy + vz * vz;
-      if (!std::isfinite(vv) || vv >= 1.0 - epsilon) {
-        double scale = std::sqrt((1.0 - 1e-12) / std::max(vv, epsilon));
-        vx *= scale;
-        vy *= scale;
-        vz *= scale;
-        vv = vx * vx + vy * vy + vz * vz;
-      }
+      const double ux = p.ux;
+      const double uy = p.uy;
+      const double uz = p.uz;
 
       const double q = p.q;
       const double m = p.m;
-
-      double lorentz = 1.0 / std::sqrt(1.0 - vv);
 
       const double exv = E.x.interpolate_at(nx, ny, nz);
       const double eyv = E.y.interpolate_at(nx, ny, nz);
@@ -172,17 +161,13 @@ template <int NX, int NY, int NZ> struct Sim {
       const double hyv = H.y.interpolate_at(nx, ny, nz);
       const double hzv = H.z.interpolate_at(nx, ny, nz);
 
-      const double ux = lorentz * vx;
-      const double uy = lorentz * vy;
-      const double uz = lorentz * vz;
-
       const double u_minus_x = ux + (q * dt / (2.0 * m)) * exv;
       const double u_minus_y = uy + (q * dt / (2.0 * m)) * eyv;
       const double u_minus_z = uz + (q * dt / (2.0 * m)) * ezv;
       const double umum = (u_minus_x * u_minus_x + u_minus_y * u_minus_y +
                            u_minus_z * u_minus_z);
 
-      const double lorentz_bar = 1.0 / sqrt(1.0 + umum);
+      const double lorentz_bar = 1.0 / std::sqrt(1.0 + umum);
       const double tx = q * dt / (2.0 * m) * hxv * lorentz_bar;
       const double ty = q * dt / (2.0 * m) * hyv * lorentz_bar;
       const double tz = q * dt / (2.0 * m) * hzv * lorentz_bar;
@@ -207,6 +192,9 @@ template <int NX, int NY, int NZ> struct Sim {
           (u_next_x * u_next_x + u_next_y * u_next_y + u_next_z * u_next_z);
 
       const double lorentz_next = std::sqrt(1.0 + unun);
+      p.ux = u_next_x;
+      p.uy = u_next_y;
+      p.uz = u_next_z;
       p.vx = u_next_x / lorentz_next;
       p.vy = u_next_y / lorentz_next;
       p.vz = u_next_z / lorentz_next;
@@ -567,7 +555,8 @@ template <int NX, int NY, int NZ> struct Sim {
 
     const auto result_handler = overloads{
       [&](PrintResult &result){ result.step(time); },
-      [&](FieldView2D<NX, NY, NZ> &result){ result.step(time, E, J, H); }
+      [&](FieldView2D<NX, NY, NZ> &result){ result.step(time, E, J, H); },
+      [&](ParticleView3D &result){ result.step(time, particles); }
     };
     for (auto &result : results) std::visit(result_handler, result);
 
@@ -577,7 +566,8 @@ template <int NX, int NY, int NZ> struct Sim {
   void finish() {
     const auto result_handler = overloads{
       [&](PrintResult){},
-      [&](FieldView2D<NX, NY, NZ> &result){ result.finish(); }
+      [&](FieldView2D<NX, NY, NZ> &result){ result.finish(); },
+      [&](ParticleView3D &result){ result.finish(); }
     };
     for (auto &result : results) std::visit(result_handler, result);
 
