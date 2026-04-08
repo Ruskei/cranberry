@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <fstream>
 #include <string>
@@ -20,9 +21,11 @@
 
 #include "config.hpp"
 #include "fdtd_types.hpp"
+#include "physical_converter.hpp"
 
 enum Axis { X, Y, Z };
 enum WhichField { E, J, H };
+enum class FieldOutputUnits { Simulation, Physical };
 
 template <int NX, int NY, int NZ> struct FieldView2D {
   using Shape = GridShape<NX, NY, NZ>;
@@ -32,6 +35,9 @@ template <int NX, int NY, int NZ> struct FieldView2D {
   int slice{};
   int interval{1};
   double threshold{0.995};
+  FieldOutputUnits output_units{FieldOutputUnits::Simulation};
+  PhysicalConverter converter{1.0};
+  std::string vector_name;
 
   vtkNew<vtkImageData> image;
   int *dims;
@@ -86,13 +92,48 @@ template <int NX, int NY, int NZ> struct FieldView2D {
     return {field.x(a, b, slice), field.y(a, b, slice), field.z(a, b, slice)};
   }
 
+  std::string make_vector_name() const {
+    if (field == WhichField::E)
+      return output_units == FieldOutputUnits::Physical ? "EField (V/m)"
+                                                        : "EField (sim)";
+    if (field == WhichField::J)
+      return "JField (sim)";
+
+    return "HField (sim)";
+  }
+
+  std::array<double, 3> output_values(const EField<NX, NY, NZ> &E,
+                                      const JField<NX, NY, NZ> &J,
+                                      const HField<NX, NY, NZ> &H, int x,
+                                      int y) const {
+    std::array<double, 3> values =
+        (field == WhichField::E)
+            ? sample(E, x, y)
+            : (field == WhichField::J) ? sample(J, x, y) : sample(H, x, y);
+
+    if (output_units == FieldOutputUnits::Physical) {
+      values[0] = converter.to_physical_electric_field(values[0]);
+      values[1] = converter.to_physical_electric_field(values[1]);
+      values[2] = converter.to_physical_electric_field(values[2]);
+    }
+
+    return values;
+  }
+
   FieldView2D(std::string name, WhichField field, Axis axis, int slice,
-              int interval)
-      : name{std::move(name)}, field{field}, axis{axis}, interval{interval} {
+              int interval,
+              FieldOutputUnits output_units = FieldOutputUnits::Simulation,
+              PhysicalConverter converter = PhysicalConverter{1.0})
+      : name{std::move(name)}, field{field}, axis{axis}, interval{interval},
+        output_units{output_units}, converter{converter},
+        vector_name{make_vector_name()} {
+    assert(output_units != FieldOutputUnits::Physical || field == WhichField::E);
+
     this->slice = std::clamp(slice, 0, slice_extent(axis) - 1);
 
     image->SetDimensions(plane_width(axis), plane_height(axis), 1);
     image->AllocateScalars(VTK_FLOAT, 3);
+    image->GetPointData()->GetScalars()->SetName(vector_name.c_str());
 
     dims = image->GetDimensions();
 
@@ -123,10 +164,7 @@ template <int NX, int NY, int NZ> struct FieldView2D {
 
     for (auto y{1}; y < dims[1] - 1; ++y)
       for (auto x{1}; x < dims[0] - 1; ++x) {
-        const std::array<double, 3> values =
-            (field == WhichField::E)
-                ? sample(E, x, y)
-                : (field == WhichField::J) ? sample(J, x, y) : sample(H, x, y);
+        const std::array<double, 3> values = output_values(E, J, H, x, y);
         const double vx = values[0];
         const double vy = values[1];
         const double vz = values[2];
@@ -139,10 +177,7 @@ template <int NX, int NY, int NZ> struct FieldView2D {
     for (auto y{1}; y < dims[1] - 1; ++y)
       for (auto x{1}; x < dims[0] - 1; ++x) {
         float *pixel = static_cast<float *>(image->GetScalarPointer(x, y, 0));
-        std::array<double, 3> values =
-            (field == WhichField::E)
-                ? sample(E, x, y)
-                : (field == WhichField::J) ? sample(J, x, y) : sample(H, x, y);
+        std::array<double, 3> values = output_values(E, J, H, x, y);
         double vx = values[0];
         double vy = values[1];
         double vz = values[2];
@@ -159,7 +194,7 @@ template <int NX, int NY, int NZ> struct FieldView2D {
         pixel[2] = vz;
       }
 
-    image->GetPointData()->SetActiveVectors("ImageScalars");
+    image->GetPointData()->SetActiveVectors(vector_name.c_str());
 
     image->Modified();
 

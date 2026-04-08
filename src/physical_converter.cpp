@@ -19,6 +19,11 @@ double PhysicalConverter::to_sim_charge(double physical_charge) const {
   return physical_charge / q0;
 }
 
+double PhysicalConverter::to_physical_electric_field(
+    double sim_electric_field) const {
+  return sim_electric_field * q0 / (e0 * l0 * l0);
+}
+
 double proper_velocity_to_coord_velocity(double proper_velocity) {
   const double uv = proper_velocity;
   return uv / std::sqrt(1 + uv * uv / light_speed / light_speed);

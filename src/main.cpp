@@ -36,6 +36,9 @@ void run_3d() {
   results.emplace_back(PrintResult{print_interval});
   results.emplace_back(FieldView2D<nx, ny, nz>(
       "e-field", WhichField::E, Axis::Z, slice_z, print_interval));
+  results.emplace_back(FieldView2D<nx, ny, nz>(
+      "e-field-physical", WhichField::E, Axis::Z, slice_z, print_interval,
+      FieldOutputUnits::Physical, converter));
   results.emplace_back(ParticleView3D{"particles", print_interval,
                                       ParticleVelocityOutput::Proper});
 
@@ -43,7 +46,7 @@ void run_3d() {
 
   const Vec3d target_lb{0, 0e-6, 0};
   const Vec3d target_ub{64e-6, 256e-6, 64e-6};
-  const double target_density{1e23};
+  const double target_density{5e22};
 
   const UniformDistribution target_electron_distribution{
       electron_species, target_lb, target_ub, target_density, 1};
