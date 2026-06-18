@@ -91,7 +91,9 @@ template <int NX, int NY, int NZ> struct ParallelFDTD {
                 const double dhy_dz = H->y(x, y, z) - H->y(x, y, z - 1);
                 const double j = J->x(x, y, z);
                 E->x(x, y, z) = E->cxe(x, y, z) * E->x(x, y, z) +
-                               0.5 * E->cxh(x, y, z) * (dhz_dy - dhy_dz - j);
+                               E->cxh(x, y, z) *
+                                   (0.5 * (dhz_dy - dhy_dz) -
+                                    current_weight * j);
               }
 
           for (auto x{y_x0}; x < y_x1; ++x)
@@ -101,7 +103,9 @@ template <int NX, int NY, int NZ> struct ParallelFDTD {
                 const double dhz_dhx = H->z(x, y, z) - H->z(x - 1, y, z);
                 const double j = J->y(x, y, z);
                 E->y(x, y, z) = E->cye(x, y, z) * E->y(x, y, z) +
-                               0.5 * E->cyh(x, y, z) * (dhx_dhz - dhz_dhx - j);
+                               E->cyh(x, y, z) *
+                                   (0.5 * (dhx_dhz - dhz_dhx) -
+                                    current_weight * j);
               }
 
           for (auto x{z_x0}; x < z_x1; ++x)
@@ -111,7 +115,9 @@ template <int NX, int NY, int NZ> struct ParallelFDTD {
                 const double dhx_dhy = H->x(x, y, z) - H->x(x, y - 1, z);
                 const double j = J->z(x, y, z);
                 E->z(x, y, z) = E->cze(x, y, z) * E->z(x, y, z) +
-                               0.5 * E->czh(x, y, z) * (dhy_dhx - dhx_dhy - j);
+                               E->czh(x, y, z) *
+                                   (0.5 * (dhy_dhx - dhx_dhy) -
+                                    current_weight * j);
               }
         }
       }
@@ -140,6 +146,7 @@ template <int NX, int NY, int NZ> struct ParallelFDTD {
   EField<NX, NY, NZ> *E{nullptr};
   HField<NX, NY, NZ> *H{nullptr};
   JField<NX, NY, NZ> *J{nullptr};
+  double current_weight{};
 
   ParallelFDTD(int thread_count = std::thread::hardware_concurrency()) {
     if (thread_count == 0)
@@ -200,7 +207,8 @@ template <int NX, int NY, int NZ> struct ParallelFDTD {
 
   void half_update_e_serial(EField<NX, NY, NZ> &E,
                             const HField<NX, NY, NZ> &H,
-                            const JField<NX, NY, NZ> &J) {
+                            const JField<NX, NY, NZ> &J,
+                            double current_weight) {
     for (auto x{0}; x < E.x.nx(); ++x)
       for (auto y{1}; y < E.x.ny() - 1; ++y)
         for (auto z{1}; z < E.x.nz() - 1; ++z) {
@@ -208,7 +216,8 @@ template <int NX, int NY, int NZ> struct ParallelFDTD {
           const double dhy_dz = H.y(x, y, z) - H.y(x, y, z - 1);
           const double j = J.x(x, y, z);
           E.x(x, y, z) = E.cxe(x, y, z) * E.x(x, y, z) +
-                         0.5 * E.cxh(x, y, z) * (dhz_dy - dhy_dz - j);
+                         E.cxh(x, y, z) *
+                             (0.5 * (dhz_dy - dhy_dz) - current_weight * j);
         }
 
     for (auto x{1}; x < E.y.nx() - 1; ++x)
@@ -218,7 +227,8 @@ template <int NX, int NY, int NZ> struct ParallelFDTD {
           const double dhz_dhx = H.z(x, y, z) - H.z(x - 1, y, z);
           const double j = J.y(x, y, z);
           E.y(x, y, z) = E.cye(x, y, z) * E.y(x, y, z) +
-                         0.5 * E.cyh(x, y, z) * (dhx_dhz - dhz_dhx - j);
+                         E.cyh(x, y, z) *
+                             (0.5 * (dhx_dhz - dhz_dhx) - current_weight * j);
         }
 
     for (auto x{1}; x < E.z.nx() - 1; ++x)
@@ -228,13 +238,15 @@ template <int NX, int NY, int NZ> struct ParallelFDTD {
           const double dhx_dhy = H.x(x, y, z) - H.x(x, y - 1, z);
           const double j = J.z(x, y, z);
           E.z(x, y, z) = E.cze(x, y, z) * E.z(x, y, z) +
-                         0.5 * E.czh(x, y, z) * (dhy_dhx - dhx_dhy - j);
+                         E.czh(x, y, z) *
+                             (0.5 * (dhy_dhx - dhx_dhy) - current_weight * j);
         }
   }
 
   void half_update(Type t, EField<NX, NY, NZ> *e, HField<NX, NY, NZ> *h,
                    JField<NX, NY, NZ> *j, int x_x_min, int x_x_max,
-                   int y_x_min, int y_x_max, int z_x_min, int z_x_max) {
+                   int y_x_min, int y_x_max, int z_x_min, int z_x_max,
+                   double current_weight) {
     const int x_x_range = x_x_max - x_x_min;
     const int y_x_range = y_x_max - y_x_min;
     const int z_x_range = z_x_max - z_x_min;
@@ -254,6 +266,7 @@ template <int NX, int NY, int NZ> struct ParallelFDTD {
       E = e;
       H = h;
       J = j;
+      this->current_weight = current_weight;
 
       active_workers = active;
 
@@ -301,18 +314,18 @@ template <int NX, int NY, int NZ> struct ParallelFDTD {
     }
 
     half_update(Type::h, &e, &h, nullptr, 0, h.x.nx(), 0, h.y.nx(), 0,
-                h.z.nx());
+                h.z.nx(), 0.0);
   }
 
   void half_update_e(EField<NX, NY, NZ> &e, HField<NX, NY, NZ> &h,
-                     JField<NX, NY, NZ> &j) {
+                     JField<NX, NY, NZ> &j, double current_weight) {
     const long long threshold = 1LL * 64 * 64 * 64;
     if (h.x.v.size() < threshold || workers.size() == 1) {
-      half_update_e_serial(e, h, j);
+      half_update_e_serial(e, h, j, current_weight);
       return;
     }
 
     half_update(Type::e, &e, &h, &j, 0, e.x.nx(), 1, e.y.nx() - 1, 1,
-                e.z.nx() - 1);
+                e.z.nx() - 1, current_weight);
   }
 };

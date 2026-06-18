@@ -133,8 +133,8 @@ template <int NX, int NY, int NZ> struct Sim {
     parallel_fdtd.half_update_h(E, H);
   }
 
-  void half_update_e() {
-    parallel_fdtd.half_update_e(E, H, J);
+  void half_update_e(double current_weight) {
+    parallel_fdtd.half_update_e(E, H, J, current_weight);
   }
 
   void step_particles() {
@@ -509,7 +509,7 @@ template <int NX, int NY, int NZ> struct Sim {
    */
   void step() {
     auto start = std::chrono::steady_clock::now();
-    half_update_e();
+    half_update_e(0.0);
     half_update_h();
     auto half_update_1 = std::chrono::steady_clock::now();
     boundary.apply(E);
@@ -525,7 +525,7 @@ template <int NX, int NY, int NZ> struct Sim {
     auto smooth_currents = std::chrono::steady_clock::now();
 
     half_update_h();
-    half_update_e();
+    half_update_e(1.0);
     auto half_update_2 = std::chrono::steady_clock::now();
     boundary.apply(E);
     auto boundary_2 = std::chrono::steady_clock::now();
