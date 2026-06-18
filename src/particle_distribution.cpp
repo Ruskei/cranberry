@@ -32,7 +32,7 @@ std::vector<Particle> generate_particle_distribution(
       
       double volume{range.x * range.y * range.z};
       double particles{density * volume};
-      int macroparticles{static_cast<int>(volume / converter.l0 / converter.l0 / converter.l0)};
+      int macroparticles{static_cast<int>(n * n * n * volume / converter.l0 / converter.l0 / converter.l0)};
       double physical_particles_per_macroparticle = particles / macroparticles;
 
       std::vector<Particle> result;

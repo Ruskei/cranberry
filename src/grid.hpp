@@ -10,6 +10,7 @@
 #include <variant>
 
 #include "particle_view_3d_result.hpp"
+#include "gauss_law_result.hpp"
 #include "parallel_particle_pusher.hpp"
 #include "parallel_current_deposition.hpp"
 #include "print_result.hpp"
@@ -25,7 +26,9 @@ template<class... Ts>
 struct overloads : Ts... { using Ts::operator()...; };
 
 template <int NX, int NY, int NZ>
-using SimulationResult = std::variant<PrintResult, FieldView2D<NX, NY, NZ>, ParticleView3D>;
+using SimulationResult =
+    std::variant<PrintResult, FieldView2D<NX, NY, NZ>, ParticleView3D,
+                 GaussLawResult<NX, NY, NZ>>;
 
 template <int NX, int NY, int NZ> struct Sim {
   using Shape = GridShape<NX, NY, NZ>;
@@ -67,7 +70,7 @@ template <int NX, int NY, int NZ> struct Sim {
       for (auto x{is}; x <= ie; ++x)
         for (auto y{js}; y <= je; ++y)
           for (auto z{ks}; z <= ke; ++z) {
-            charge(x, y, z) += -p.q * form_factor(px, x) * form_factor(py, y) *
+            charge(x, y, z) += p.q * form_factor(px, x) * form_factor(py, y) *
                                form_factor(pz, z);
           }
     }
@@ -77,17 +80,17 @@ template <int NX, int NY, int NZ> struct Sim {
     for (auto x{1}; x < E.x.nx() - 1; ++x)
       for (auto y{2}; y < E.x.ny() - 2; ++y)
         for (auto z{2}; z < E.x.nz() - 2; ++z)
-          E.x(x, y, z) = potential(x + 1, y, z) - potential(x, y, z);
+          E.x(x, y, z) = potential(x, y, z) - potential(x + 1, y, z);
 
     for (auto x{2}; x < E.y.nx() - 2; ++x)
       for (auto y{1}; y < E.y.ny() - 1; ++y)
         for (auto z{2}; z < E.y.nz() - 2; ++z)
-          E.y(x, y, z) = potential(x, y + 1, z) - potential(x, y, z);
+          E.y(x, y, z) = potential(x, y, z) - potential(x, y + 1, z);
 
     for (auto x{2}; x < E.z.nx() - 2; ++x)
       for (auto y{2}; y < E.z.ny() - 2; ++y)
         for (auto z{1}; z < E.z.nz() - 1; ++z)
-          E.z(x, y, z) = potential(x, y, z + 1) - potential(x, y, z);
+          E.z(x, y, z) = potential(x, y, z) - potential(x, y, z + 1);
   }
 
   Sim(std::vector<Particle> particles,
@@ -490,25 +493,6 @@ template <int NX, int NY, int NZ> struct Sim {
         }
   }
 
-  void check_gauss() {
-    double total_div_E = 0.0;
-    double total_charge = 0.0;
-    for (auto x{2}; x < E.x.nx() - 2; ++x)
-      for (auto y{2}; y < E.y.ny() - 2; ++y)
-        for (auto z{2}; z < E.z.nz() - 2; ++z) {
-          const double div_E = (E.x(x, y, z) - E.x(x - 1, y, z)) +
-                               (E.y(x, y, z) - E.y(x, y - 1, z)) +
-                               (E.z(x, y, z) - E.z(x, y, z - 1));
-          total_div_E += div_E;
-          total_charge += charge(x, y, z);
-        }
-
-    const double residual = total_div_E + total_charge;
-    if (std::abs(residual) > 1e-9)
-      std::cout << "Σ∇∙E=" << total_div_E << ", Σρ=" << total_charge
-                << std::endl;
-  }
-
   long long half_update_duration{0};
   long long boundary_duration{0};
   long long step_particles_duration{0};
@@ -556,7 +540,8 @@ template <int NX, int NY, int NZ> struct Sim {
     const auto result_handler = overloads{
       [&](PrintResult &result){ result.step(time); },
       [&](FieldView2D<NX, NY, NZ> &result){ result.step(time, E, J, H); },
-      [&](ParticleView3D &result){ result.step(time, particles); }
+      [&](ParticleView3D &result){ result.step(time, particles); },
+      [&](GaussLawResult<NX, NY, NZ> &result){ result.step(time, E, particles); }
     };
     for (auto &result : results) std::visit(result_handler, result);
 
@@ -567,7 +552,8 @@ template <int NX, int NY, int NZ> struct Sim {
     const auto result_handler = overloads{
       [&](PrintResult){},
       [&](FieldView2D<NX, NY, NZ> &result){ result.finish(); },
-      [&](ParticleView3D &result){ result.finish(); }
+      [&](ParticleView3D &result){ result.finish(); },
+      [&](GaussLawResult<NX, NY, NZ> &result){ result.finish(); }
     };
     for (auto &result : results) std::visit(result_handler, result);
 

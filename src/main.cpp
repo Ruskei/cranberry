@@ -41,12 +41,14 @@ void run_3d() {
       FieldOutputUnits::Physical, converter));
   results.emplace_back(ParticleView3D{"particles", print_interval,
                                       ParticleVelocityOutput::Proper});
+  results.emplace_back(
+      GaussLawResult<nx, ny, nz>{"gauss-law", print_interval});
 
   std::vector<Particle> particles;
 
   const Vec3d target_lb{0, 0e-6, 0};
   const Vec3d target_ub{64e-6, 256e-6, 64e-6};
-  const double target_density{5e22};
+  const double target_density{1e23};
 
   const UniformDistribution target_electron_distribution{
       electron_species, target_lb, target_ub, target_density, 1};
@@ -55,7 +57,7 @@ void run_3d() {
 
   const Vec3d beam_velocity{0, proper_velocity_to_coord_velocity(1'00 * light_speed), 0};
   std::cout << "beam_velocity=" << (beam_velocity.y / light_speed) << std::endl;
-  const Vec3d beam_p{32e-6, 85e-6, 32e-6};
+  const Vec3d beam_p{32e-6, 89e-6, 32e-6};
   const Vec3d beam_rms{2e-6, 4e-6, 2e-6};
   const double beam_q_total{-1e-10};
   const double beam_m_total{-beam_q_total / fundamental_charge * electron_mass};
